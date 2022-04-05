@@ -2,6 +2,8 @@ import subprocess, os, threading, re, traceback
 import boto3
 from flask_restful import Resource
 from flask import request
+from datetime import datetime
+from db.models.snakemake_data_object import SnakemakeDataObject 
 
 class RunPipeline(Resource):
     def get(self):
@@ -47,15 +49,26 @@ class RunPipeline(Resource):
                     'host={0}'.format(snakemake_env['S3_URL']),
                     'filename={0}'.format(filename)
                 ]
-               
-                # thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, dataname, filename])
-                # thread.start()
+
+                # Insert the data processing entry to db.
+                entry = SnakemakeDataObject(
+                    dataset_name = dataname,
+                    filename = filename,
+                    git_url = git_url,
+                    commit_id = git_sha,
+                    status = 'processing',
+                    process_start_date = datetime.now()
+                ).save()
+
+                # Start the snakemake job.
+                thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, dataname, filename, str(entry.id)])
+                thread.start()
 
                 response['message'] = 'Pipeline submitted'
+                response['process_id'] = str(entry.id)
                 response['git_url'] = git_url
                 response['repository_name'] = repo_name
                 response['commit_id'] = git_sha
-                # TO DO: Insert the data processing entry to db.
             except Exception as e:
                 print('Exception ', e)
                 print(traceback.format_exc())
@@ -68,7 +81,7 @@ class RunPipeline(Resource):
 
         return(response, status)
     
-def run_in_thread(cmd, env, dataname, filename):
+def run_in_thread(cmd, env, dataname, filename, object_id):
     try:
         # Execute the snakemake job.
         snakemake_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -121,11 +134,24 @@ def run_in_thread(cmd, env, dataname, filename):
         if found:
             md5 = re.findall(r'- md5:\s(.*?)$', found)
             print('data added: ' + md5[0])
-            # TO DO: update db with the md5 value.
+            #Update db with the md5 value.
+            obj = SnakemakeDataObject.objects(id = object_id).first()
+            obj.update(
+                md5=md5[0],
+                process_end_date=datetime.now(),
+                status='complete'
+            )
         else:
             print('md5 not found')
     except Exception as e:
-        # TO DO: log error to db and email notification.
+        #Log error to db and email notification.
         print('error')
+        update_db_with_error(object_id)
         raise
 
+def update_db_with_error(object_id):
+    obj = SnakemakeDataObject.objects(id = object_id).first()
+    obj.update(
+        process_end_date=datetime.now(),
+        status='error'
+    )

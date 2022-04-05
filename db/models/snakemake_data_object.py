@@ -11,4 +11,3 @@ class SnakemakeDataObject(db.Document):
     process_start_date = db.DateTimeField()
     process_end_date = db.DateTimeField()
     data_object_id = db.StringField()
-    error = db.BooleanField()
