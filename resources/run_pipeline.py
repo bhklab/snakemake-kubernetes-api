@@ -9,16 +9,6 @@ class RunPipeline(Resource):
         status = 200
         response = {}
         
-        '''
-        Copy the environment variables. The following app-specific environment variables are also imported:
-        - SNAKEMAKE_GIT_ACCOUNT - GitHub account name where the snakemake repos are hosted.
-        - SNAKEMAKE_ROOT - root directory where the Snakefile and env files are stored.
-        - SNAKEMAKE_DOCKER_IMG - docker image used to run snakemake pipelines.
-        - DVC_ROOT - root directory where the dvc repositories are stored.
-        - S3_BUCKET - bucket name of the S3 storage
-        - S3_ACCESS_KEY_ID - access id to ComputeCanada S3 storage.
-        - S3_SECRET_ACCESS_KEY - access key to ComputeCanada S3 storage.
-        '''
         snakemake_env = os.environ.copy()
         dataname = request.args.get('dataname')
         filename = request.args.get('filename')
@@ -58,12 +48,12 @@ class RunPipeline(Resource):
                     'filename={0}'.format(filename)
                 ]
                
-                thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, dataname, filename])
-                thread.start()
+                # thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, dataname, filename])
+                # thread.start()
 
                 response['message'] = 'Pipeline submitted'
                 response['git_url'] = git_url
-                response['pipeline_name'] = repo_name
+                response['repository_name'] = repo_name
                 response['commit_id'] = git_sha
                 # TO DO: Insert the data processing entry to db.
             except Exception as e:
