@@ -11,7 +11,7 @@ do
     esac
 done
 
-git clone "https://github.com/mnakano/${dataname}-dvc.git" && 
+# git clone "https://github.com/mnakano/${dataname}-dvc.git" && 
 git clone "git@github.com:mnakano/${dataname}-dvc.git" && 
 cd "${dataname}-dvc" && 
 dvc init &&

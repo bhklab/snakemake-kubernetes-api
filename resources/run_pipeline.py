@@ -3,7 +3,7 @@ import boto3
 from flask_restful import Resource
 from flask import request
 
-class CreatePipeline(Resource):
+class RunPipeline(Resource):
     def get(self):
         print('create pipeline')
         status = 200
@@ -11,8 +11,9 @@ class CreatePipeline(Resource):
         
         '''
         Copy the environment variables. The following app-specific environment variables are also imported:
-        - GIT_ACCOUNT - GitHub account name where the snakemake repos are hosted.
+        - SNAKEMAKE_GIT_ACCOUNT - GitHub account name where the snakemake repos are hosted.
         - SNAKEMAKE_ROOT - root directory where the Snakefile and env files are stored.
+        - SNAKEMAKE_DOCKER_IMG - docker image used to run snakemake pipelines.
         - DVC_ROOT - root directory where the dvc repositories are stored.
         - S3_BUCKET - bucket name of the S3 storage
         - S3_ACCESS_KEY_ID - access id to ComputeCanada S3 storage.
@@ -21,7 +22,7 @@ class CreatePipeline(Resource):
         snakemake_env = os.environ.copy()
         dataname = request.args.get('dataname')
         filename = request.args.get('filename')
-        git_url = "https://github.com/" + snakemake_env['GIT_ACCOUNT'] + "/" + dataname + "-snakemake.git" # to be replaced with proper
+        git_url = "https://github.com/" + snakemake_env['SNAKEMAKE_GIT_ACCOUNT'] + "/" + dataname + "-snakemake.git" # to be replaced with proper
 
         repo_name = re.findall(r'.*/(.*?).git$', git_url)
         repo_name = repo_name[0] if len(repo_name) > 0 else None
@@ -44,7 +45,7 @@ class CreatePipeline(Resource):
                     '--snakefile', work_dir + '/Snakefile',
                     '--directory', work_dir,
                     '--kubernetes',
-                    '--container-image', 'ceeles/snakemake-aks:latest',
+                    '--container-image', snakemake_env['SNAKEMAKE_DOCKER_IMG'],
                     '--default-remote-prefix', snakemake_env['S3_BUCKET'],
                     '--default-remote-provider', 'S3',
                     '--use-conda',
