@@ -48,6 +48,7 @@ class DownloadDataObject(Resource):
     def get(self):
         status = 200
         response = {}
+        env = os.environ
         object = None
         file_path = None
         try:
@@ -59,7 +60,7 @@ class DownloadDataObject(Resource):
                 if object.status.value == 'processing':
                     response['message'] = 'Unable to download. Data object is being processed.'
                 else:
-                    tmp_dir = '{0}/{1}'.format('/Users/minorunakano/Documents/tmp', str(object.id))
+                    tmp_dir = '{0}/{1}'.format(os.environ ['TMP_DIR'], str(object.id))
                     file_path = tmp_dir + '/' + object.filename
                     if not os.path.exists(tmp_dir):
                         os.makedirs(tmp_dir)

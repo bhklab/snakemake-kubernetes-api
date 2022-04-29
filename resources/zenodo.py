@@ -21,25 +21,23 @@ class ZenodoUpload(Resource):
                 object = SnakemakeDataObject.objects(pk=data_obj_id).first()
 
             if(object is not None):
-                match object.status.value:
-                    case 'complete':
-                        print('upload')
-                        # execute the upload process in a separate thread
-                        thread = threading.Thread(
-                            target=fetch_and_upload, 
-                            args=[object]
-                        )
-                        thread.start()
-
-                        response['message'] = 'Object is being uploaded.' # get the pre-assigned doi.
-                    case 'processing':
-                        response['message'] = 'Unable to upload. Data object is being processed.'
-                    case 'uploaded':
-                        response = {
-                            'message': 'Data object has already been uploaded.',
-                            'doi': object.doi,
-                            'download_link': object.download_link
-                        }
+                if object.status.value == 'complete':
+                    print('upload')
+                    # execute the upload process in a separate thread
+                    thread = threading.Thread(
+                        target=fetch_and_upload, 
+                        args=[object]
+                    )
+                    thread.start()
+                    response['message'] = 'Object is being uploaded.'
+                elif object.status.value == 'processing':
+                    response['message'] = 'Unable to upload. Data object is being processed.'
+                elif object.status.value == 'uploaded':
+                    response = {
+                        'message': 'Data object has already been uploaded.',
+                        'doi': object.doi,
+                        'download_link': object.download_link
+                    }
             else:
                 response['message'] = 'Data object could not be found'
         except Exception as e:
@@ -58,7 +56,7 @@ Updates the database document status as 'uploaded'.
 '''
 def fetch_and_upload(object):
     try:
-        tmp_dir = '{0}/{1}'.format('/Users/minorunakano/Documents/tmp', str(object.id))
+        tmp_dir = '{0}/{1}'.format(os.environ ['TMP_DIR'], str(object.id))
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
 

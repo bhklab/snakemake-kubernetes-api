@@ -15,69 +15,74 @@ class RunPipeline(Resource):
         status = 200
         response = {}
         
-        # snakemake_env = os.environ.copy()
+        snakemake_env = os.environ.copy()
         req_body = request.get_json()
         pipeline_name = req_body['pipeline']
         filename = req_body['filename']
-        git_url = 'www.github.com'
-        git_sha = '1234567890'
-        repo_name = 'pdtx-snakemake'
+        # git_url = 'www.github.com'
+        # git_sha = '1234567890'
+        # repo_name = 'pdtx-snakemake'
 
-        # git_url = "https://github.com/" + snakemake_env['SNAKEMAKE_GIT_ACCOUNT'] + "/" + pipeline_name + "-snakemake.git" # to be replaced with proper
+        git_url = "https://github.com/" + snakemake_env['SNAKEMAKE_GIT_ACCOUNT'] + "/" + pipeline_name + "-snakemake.git" # to be replaced with proper
 
-        # repo_name = re.findall(r'.*/(.*?).git$', git_url)
-        # repo_name = repo_name[0] if len(repo_name) > 0 else None
+        repo_name = re.findall(r'.*/(.*?).git$', git_url)
+        repo_name = repo_name[0] if len(repo_name) > 0 else None
 
         if repo_name is not None:
             try:
-        #         # Pull the latest Snakefile and environment configs.
-        #         work_dir = '{0}/{1}'.format(snakemake_env['SNAKEMAKE_ROOT'], repo_name)
-        #         git_process = subprocess.Popen(['git', '-C', work_dir, 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #         git_process.wait()
+                # Pull the latest Snakefile and environment configs.
+                work_dir = '{0}/{1}'.format(snakemake_env['SNAKEMAKE_ROOT'], repo_name)
+                git_process = subprocess.Popen(['git', '-C', work_dir, 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                git_process.wait()
                 
-        #         # Get the commit id of the latest Snakefile version.
-        #         git_process = subprocess.Popen(["git", "ls-remote", git_url], stdout=subprocess.PIPE)
-        #         stdout, std_err = git_process.communicate()
-        #         git_sha = re.split(r'\t+', stdout.decode('ascii'))[0]
-            
-        #         # Define the snakemake execution command.
-        #         snakemake_cmd = [
-        #             'snakemake',
-        #             '--snakefile', work_dir + '/Snakefile',
-        #             '--directory', work_dir,
-        #             '--kubernetes',
-        #             '--container-image', snakemake_env['SNAKEMAKE_DOCKER_IMG'],
-        #             '--default-remote-prefix', snakemake_env['S3_BUCKET'],
-        #             '--default-remote-provider', 'S3',
-        #             '--use-conda',
-        #             '--jobs', '3',
-        #             '--config', 
-        #             'prefix={0}/snakemake/{1}/'.format(snakemake_env['S3_BUCKET'], pipeline_name), 
-        #             'key={0}'.format(snakemake_env['S3_ACCESS_KEY_ID']), 
-        #             'secret={0}'.format(snakemake_env['S3_SECRET_ACCESS_KEY']),
-        #             'host={0}'.format(snakemake_env['S3_URL']),
-        #             'filename={0}'.format(filename)
-        #         ]
+                # Get the commit id of the latest Snakefile version.
+                git_process = subprocess.Popen(["git", "ls-remote", git_url], stdout=subprocess.PIPE)
+                stdout, std_err = git_process.communicate()
+                git_sha = re.split(r'\t+', stdout.decode('ascii'))[0]
 
-                # Insert the data processing entry to db.
-                entry = SnakemakeDataObject(
-                    pipeline_name = pipeline_name,
-                    filename = filename,
-                    git_url = git_url,
-                    commit_id = git_sha,
-                    status = 'processing',
-                    process_start_date = datetime.now()
-                ).save()
+                object = SnakemakeDataObject.objects(pipeline_name=pipeline_name, commit_id=git_sha).first()
+                if(object is None):
+                    # Define the snakemake execution command.
+                    snakemake_cmd = [
+                        'snakemake',
+                        '--snakefile', work_dir + '/Snakefile',
+                        '--directory', work_dir,
+                        '--kubernetes',
+                        '--container-image', snakemake_env['SNAKEMAKE_DOCKER_IMG'],
+                        '--default-remote-prefix', snakemake_env['S3_BUCKET'],
+                        '--default-remote-provider', 'S3',
+                        '--jobs', '3',
+                        '-R', 'get_pset',
+                        '--config', 
+                        'prefix={0}/snakemake/{1}/'.format(snakemake_env['S3_BUCKET'], pipeline_name), 
+                        'key={0}'.format(snakemake_env['S3_ACCESS_KEY_ID']), 
+                        'secret={0}'.format(snakemake_env['S3_SECRET_ACCESS_KEY']),
+                        'host={0}'.format(snakemake_env['S3_URL']),
+                        'filename={0}'.format(filename)
+                    ]
 
-        #         # Start the snakemake job.
-        #         thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, pipeline_name, filename, str(entry.id)])
-        #         thread.start()
+                    # Insert the data processing entry to db.
+                    entry = SnakemakeDataObject(
+                        pipeline_name = pipeline_name,
+                        filename = filename,
+                        git_url = git_url,
+                        commit_id = git_sha,
+                        status = 'processing',
+                        process_start_date = datetime.now()
+                    ).save()
 
-                response['message'] = 'Pipeline submitted'
-                response['process_id'] = str(entry.id)
-                response['git_url'] = git_url
-                response['repository_name'] = repo_name
-                response['commit_id'] = git_sha
+                    # Start the snakemake job.
+                    thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, pipeline_name, filename, str(entry.id)])
+                    thread.start()
+
+                    response['message'] = 'Pipeline submitted'
+                    response['process_id'] = str(entry.id)
+                    response['git_url'] = git_url
+                    response['repository_name'] = repo_name
+                    response['commit_id'] = git_sha
+                else:
+                    response['message'] = 'A %s data object with the latest pipeline already exists' % pipeline_name
+                    response['object'] = object.serialize()
             except Exception as e:
                 print('Exception ', e)
                 print(traceback.format_exc())
