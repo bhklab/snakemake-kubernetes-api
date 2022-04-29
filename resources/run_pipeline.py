@@ -6,53 +6,62 @@ from datetime import datetime
 from db.models.snakemake_data_object import SnakemakeDataObject 
 
 class RunPipeline(Resource):
+
     def get(self):
+        return "Only post request is allowed", 400
+    
+    def post(self):
         print('create pipeline')
         status = 200
         response = {}
         
-        snakemake_env = os.environ.copy()
-        dataname = request.args.get('dataname')
-        filename = request.args.get('filename')
-        git_url = "https://github.com/" + snakemake_env['SNAKEMAKE_GIT_ACCOUNT'] + "/" + dataname + "-snakemake.git" # to be replaced with proper
+        # snakemake_env = os.environ.copy()
+        req_body = request.get_json()
+        pipeline_name = req_body['pipeline']
+        filename = req_body['filename']
+        git_url = 'www.github.com'
+        git_sha = '1234567890'
+        repo_name = 'pdtx-snakemake'
 
-        repo_name = re.findall(r'.*/(.*?).git$', git_url)
-        repo_name = repo_name[0] if len(repo_name) > 0 else None
+        # git_url = "https://github.com/" + snakemake_env['SNAKEMAKE_GIT_ACCOUNT'] + "/" + pipeline_name + "-snakemake.git" # to be replaced with proper
+
+        # repo_name = re.findall(r'.*/(.*?).git$', git_url)
+        # repo_name = repo_name[0] if len(repo_name) > 0 else None
 
         if repo_name is not None:
             try:
-                # Pull the latest Snakefile and environment configs.
-                work_dir = '{0}/{1}'.format(snakemake_env['SNAKEMAKE_ROOT'], repo_name)
-                git_process = subprocess.Popen(['git', '-C', work_dir, 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                git_process.wait()
+        #         # Pull the latest Snakefile and environment configs.
+        #         work_dir = '{0}/{1}'.format(snakemake_env['SNAKEMAKE_ROOT'], repo_name)
+        #         git_process = subprocess.Popen(['git', '-C', work_dir, 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #         git_process.wait()
                 
-                # Get the commit id of the latest Snakefile version.
-                git_process = subprocess.Popen(["git", "ls-remote", git_url], stdout=subprocess.PIPE)
-                stdout, std_err = git_process.communicate()
-                git_sha = re.split(r'\t+', stdout.decode('ascii'))[0]
+        #         # Get the commit id of the latest Snakefile version.
+        #         git_process = subprocess.Popen(["git", "ls-remote", git_url], stdout=subprocess.PIPE)
+        #         stdout, std_err = git_process.communicate()
+        #         git_sha = re.split(r'\t+', stdout.decode('ascii'))[0]
             
-                # Define the snakemake execution command.
-                snakemake_cmd = [
-                    'snakemake',
-                    '--snakefile', work_dir + '/Snakefile',
-                    '--directory', work_dir,
-                    '--kubernetes',
-                    '--container-image', snakemake_env['SNAKEMAKE_DOCKER_IMG'],
-                    '--default-remote-prefix', snakemake_env['S3_BUCKET'],
-                    '--default-remote-provider', 'S3',
-                    '--use-conda',
-                    '--jobs', '3',
-                    '--config', 
-                    'prefix={0}/snakemake/{1}/'.format(snakemake_env['S3_BUCKET'], dataname), 
-                    'key={0}'.format(snakemake_env['S3_ACCESS_KEY_ID']), 
-                    'secret={0}'.format(snakemake_env['S3_SECRET_ACCESS_KEY']),
-                    'host={0}'.format(snakemake_env['S3_URL']),
-                    'filename={0}'.format(filename)
-                ]
+        #         # Define the snakemake execution command.
+        #         snakemake_cmd = [
+        #             'snakemake',
+        #             '--snakefile', work_dir + '/Snakefile',
+        #             '--directory', work_dir,
+        #             '--kubernetes',
+        #             '--container-image', snakemake_env['SNAKEMAKE_DOCKER_IMG'],
+        #             '--default-remote-prefix', snakemake_env['S3_BUCKET'],
+        #             '--default-remote-provider', 'S3',
+        #             '--use-conda',
+        #             '--jobs', '3',
+        #             '--config', 
+        #             'prefix={0}/snakemake/{1}/'.format(snakemake_env['S3_BUCKET'], pipeline_name), 
+        #             'key={0}'.format(snakemake_env['S3_ACCESS_KEY_ID']), 
+        #             'secret={0}'.format(snakemake_env['S3_SECRET_ACCESS_KEY']),
+        #             'host={0}'.format(snakemake_env['S3_URL']),
+        #             'filename={0}'.format(filename)
+        #         ]
 
                 # Insert the data processing entry to db.
                 entry = SnakemakeDataObject(
-                    dataset_name = dataname,
+                    pipeline_name = pipeline_name,
                     filename = filename,
                     git_url = git_url,
                     commit_id = git_sha,
@@ -60,9 +69,9 @@ class RunPipeline(Resource):
                     process_start_date = datetime.now()
                 ).save()
 
-                # Start the snakemake job.
-                thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, dataname, filename, str(entry.id)])
-                thread.start()
+        #         # Start the snakemake job.
+        #         thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, pipeline_name, filename, str(entry.id)])
+        #         thread.start()
 
                 response['message'] = 'Pipeline submitted'
                 response['process_id'] = str(entry.id)
@@ -73,15 +82,15 @@ class RunPipeline(Resource):
                 print('Exception ', e)
                 print(traceback.format_exc())
                 response['error'] = 1
-                response['message'] = e
+                response['message'] = str(e)
                 status = 500
         else:
             response['error'] = 1
-            response['message'] = 'Repository name could not be determined. Pipeline not submitted.'
+            response['message'] = 'Repository name could not be found. Pipeline not submitted.'
 
         return(response, status)
     
-def run_in_thread(cmd, env, dataname, filename, object_id):
+def run_in_thread(cmd, env, pipeline_name, filename, object_id):
     try:
         # Execute the snakemake job.
         snakemake_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -96,15 +105,16 @@ def run_in_thread(cmd, env, dataname, filename, object_id):
         print('execution complete')
 
         # Download the resulting data from the snakemake job.
-        s3_client = boto3.client('s3',
-                    endpoint_url=env['S3_URL'],
-                    aws_access_key_id=env['S3_ACCESS_KEY_ID'],
-                    aws_secret_access_key=env['S3_SECRET_ACCESS_KEY']
+        s3_client = boto3.client(
+            's3',
+            endpoint_url=env['S3_URL'],
+            aws_access_key_id=env['S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=env['S3_SECRET_ACCESS_KEY']
         )
         s3_client.download_file(
             env['S3_BUCKET'], 
-            'snakemake/{0}/{1}'.format(dataname, filename), 
-            '{0}/{1}-dvc/{2}'.format(env['DVC_ROOT'], dataname, filename)
+            'snakemake/{0}/{1}'.format(pipeline_name, filename), 
+            '{0}/{1}-dvc/{2}'.format(env['DVC_ROOT'], pipeline_name, filename)
         )
         print('download complete')
         
@@ -114,7 +124,7 @@ def run_in_thread(cmd, env, dataname, filename, object_id):
             'bash',
             os.path.join(cwd, 'bash', 'dvc_add.sh'),
             '-r', env['DVC_ROOT'],
-            '-d', dataname,
+            '-d', pipeline_name,
             '-f', filename
         ]
         dvc_process = subprocess.Popen(add_data_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -126,7 +136,7 @@ def run_in_thread(cmd, env, dataname, filename, object_id):
             else:
                 print(line.rstrip().decode("utf-8"))
                 dvc_p_out.append(line.rstrip().decode("utf-8"))
-        with open(env['DVC_ROOT'] + '/' + dataname + "-dvc/" + filename + ".dvc") as file:
+        with open(env['DVC_ROOT'] + '/' + pipeline_name + "-dvc/" + filename + ".dvc") as file:
             lines = [line.rstrip() for line in file]
         r = re.compile("^- md5:.*")
         found = next(filter(r.match, lines), None)
