@@ -3,6 +3,7 @@ from flask import Flask
 from flask_restful import Api
 from flask_cors import CORS
 from db import db
+from decouple import config
 
 from resources.run_pipeline import RunPipeline
 from resources.pipeline import ListPipeline
@@ -14,7 +15,7 @@ from resources.test import Test
 app = Flask(__name__)
 
 # Initialize MongoEngine
-app.config['MONGODB_HOST'] = os.environ.get('MONGODB_HOST')
+app.config['MONGODB_HOST'] = config('MONGODB_HOST')
 db.init_app(app)
 
 CORS(app)

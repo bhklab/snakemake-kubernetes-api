@@ -1,4 +1,5 @@
 import os, traceback, boto3
+from decouple import config
 from flask_restful import Resource
 from flask import request, send_file
 from db.models.snakemake_data_object import SnakemakeDataObject
@@ -48,7 +49,6 @@ class DownloadDataObject(Resource):
     def get(self):
         status = 200
         response = {}
-        env = os.environ
         object = None
         file_path = None
         try:
@@ -60,7 +60,7 @@ class DownloadDataObject(Resource):
                 if object.status.value == 'processing':
                     response['message'] = 'Unable to download. Data object is being processed.'
                 else:
-                    tmp_dir = '{0}/{1}'.format(os.environ ['TMP_DIR'], str(object.id))
+                    tmp_dir = '{0}/{1}'.format(config('TMP_DIR'), str(object.id))
                     file_path = tmp_dir + '/' + object.filename
                     if not os.path.exists(tmp_dir):
                         os.makedirs(tmp_dir)
@@ -86,16 +86,15 @@ class DownloadDataObject(Resource):
 
 def download(object, dest_dir):
     try:
-        env = os.environ
         # Download the resulting data from the snakemake job.
         s3_client = boto3.client(
             's3',
-            endpoint_url=env['S3_URL'],
-            aws_access_key_id=env['S3_ACCESS_KEY_ID'],
-            aws_secret_access_key=env['S3_SECRET_ACCESS_KEY']
+            endpoint_url=config('S3_URL'),
+            aws_access_key_id=config('S3_ACCESS_KEY_ID'),
+            aws_secret_access_key=config('S3_SECRET_ACCESS_KEY')
         )
         s3_client.download_file(
-            env['S3_BUCKET'], 
+            config('S3_BUCKET'), 
             'dvc/{0}/{1}/{2}'.format(object.pipeline_name, object.md5[:2], object.md5[2:]), 
             '{0}/{1}'.format(dest_dir, object.filename)
         )
