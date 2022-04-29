@@ -105,10 +105,11 @@ def run_in_thread(cmd, env, pipeline_name, filename, object_id):
         print('execution complete')
 
         # Download the resulting data from the snakemake job.
-        s3_client = boto3.client('s3',
-                    endpoint_url=env['S3_URL'],
-                    aws_access_key_id=env['S3_ACCESS_KEY_ID'],
-                    aws_secret_access_key=env['S3_SECRET_ACCESS_KEY']
+        s3_client = boto3.client(
+            's3',
+            endpoint_url=env['S3_URL'],
+            aws_access_key_id=env['S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=env['S3_SECRET_ACCESS_KEY']
         )
         s3_client.download_file(
             env['S3_BUCKET'], 

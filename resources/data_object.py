@@ -1,6 +1,6 @@
-import traceback
+import os, traceback, boto3
 from flask_restful import Resource
-from flask import request
+from flask import request, send_file
 from db.models.snakemake_data_object import SnakemakeDataObject
 
 class ListDataObject(Resource):
@@ -48,8 +48,25 @@ class DownloadDataObject(Resource):
     def get(self):
         status = 200
         response = {}
+        object = None
+        file_path = None
         try:
-            print('download')
+            data_obj_id = request.args.get('data_obj_id')
+            if(data_obj_id is not None):
+                object = SnakemakeDataObject.objects(pk=data_obj_id).first()
+
+            if(object is not None):
+                if object.status.value == 'processing':
+                    response['message'] = 'Unable to download. Data object is being processed.'
+                else:
+                    tmp_dir = '{0}/{1}'.format('/Users/minorunakano/Documents/tmp', str(object.id))
+                    file_path = tmp_dir + '/' + object.filename
+                    if not os.path.exists(tmp_dir):
+                        os.makedirs(tmp_dir)
+                    if not os.path.exists(file_path):
+                        download(object, tmp_dir)
+            else:
+                response['message'] = 'Data object could not be found'
         except Exception as e:
             print('Exception ', e)
             print(traceback.format_exc())
@@ -57,7 +74,30 @@ class DownloadDataObject(Resource):
             response['message'] = str(e)
             status = 500
         finally:
-            return response, status
+            if file_path is not None:
+                return send_file(file_path, as_attachment=True, attachment_filename=object.filename)
+            else:
+                return response, status
     
     def post(self):
         return 'Only get request is allowed', 400   
+
+
+def download(object, dest_dir):
+    try:
+        env = os.environ
+        # Download the resulting data from the snakemake job.
+        s3_client = boto3.client(
+            's3',
+            endpoint_url=env['S3_URL'],
+            aws_access_key_id=env['S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=env['S3_SECRET_ACCESS_KEY']
+        )
+        s3_client.download_file(
+            env['S3_BUCKET'], 
+            'dvc/{0}/{1}/{2}'.format(object.pipeline_name, object.md5[:2], object.md5[2:]), 
+            '{0}/{1}'.format(dest_dir, object.filename)
+        )
+    except Exception as e:
+        print('Exception ', e)
+        print(traceback.format_exc())
