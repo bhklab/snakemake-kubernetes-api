@@ -30,6 +30,8 @@ Once the kubectl installation is verified, connect the kubectl to Compute Canada
 
 ### Install Miniconda and set up python environment
 To get started with setup you can install miniconda3 using the instructions available here: https://docs.conda.io/en/latest/miniconda.html.
+Installation Guide: https://conda.io/projects/conda/en/latest/user-guide/install/linux.html#install-linux-silent
+
 
 
 
