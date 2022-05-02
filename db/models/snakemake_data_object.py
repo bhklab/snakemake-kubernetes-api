@@ -5,6 +5,7 @@ class Status(Enum):
     PROCESSING='processing'
     COMPLETE='complete'
     UPLOADED='uploaded'
+    ERROR='error'
 
 class SnakemakeDataObject(db.Document):
     pipeline_name = db.StringField()
@@ -19,6 +20,7 @@ class SnakemakeDataObject(db.Document):
     data_object_id = db.StringField()
     doi = db.StringField()
     download_link = db.StringField()
+    error_message = db.StringField()
 
     def serialize(self):
         return({

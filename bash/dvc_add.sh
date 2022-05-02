@@ -9,8 +9,8 @@ do
 done
 
 cd "${root_dir}/${dataname}-dvc" && 
-dvc add --to-remote --remote ${dataname} ${filename} && 
+/home/ubuntu/miniconda3/envs/orcestra-snakemake/bin/dvc add --to-remote --remote ${dataname} ${filename} && 
 git add "${filename}.dvc" && 
 git commit -m 'Added data' && 
-dvc push -r ${dataname} && 
+/home/ubuntu/miniconda3/envs/orcestra-snakemake/bin/dvc push -r ${dataname} && 
 git push 
