@@ -1,6 +1,39 @@
 # snakemake-kubernetes-api
 Flask API to issue snakemake command based on a request.
-The API is to be used for the new data processing layer of ORCESTRA. 
+The API is to be used for the new data processing layer of ORCESTRA.
+
+## API End-points
+1. GET /api/data_objects
+Lists data objects. 
+Accepted parameters:
+```
+status (optional, by default it returns 'complete' and 'uploaded' data objects): processing, complete or uploaded
+pipeline_name (optional): string value for pipeline name
+latest (optional, defaults to 'false'): boolean, if true, returns the latest pipeline run filtered with other parameters.
+```
+Example:```curl http://Host_URL/api/data_objects```
+
+2. GET /api/data_object/download
+Downloads a data object to local storage.
+Example ```curl 'http://Host_URL/api/data_object/download?data_obj_id=Data_Object_ID' --output File_Name```
+
+3. POST /api/run_pipeline 
+Triggers a data object curation pipeline run.
+Example: 
+```
+curl -X POST http://Host_URL/api/run_pipeline \
+   -H "Content-Type: application/json" \
+   -d '{"pipeline": Pipeline_Name, "filename": Data_Object_Filename}' 
+```
+
+4. POST /api/data_object/upload
+Uploads a data object to Zenodo.
+Example:
+```
+curl -X POST http://Host_URL/api/data_object/upload \
+   -H "Content-Type: application/json" \
+   -d '{"data_obj_id": Data_Object_ID}' 
+```
 
 ## Set up
 All commands should be executed from the user's top level directory.
