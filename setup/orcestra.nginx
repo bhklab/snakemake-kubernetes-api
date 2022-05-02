@@ -1,0 +1,20 @@
+server {
+    client_max_body_size 20M;
+    listen 80;
+    root /home/ubuntu/snakemake-kubernetes-api;
+
+    location / {
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "no-cache"; # caching directives
+    }
+
+    location /static {
+        expires 1y;
+        add_header Cache-Control "public"; # caching directives
+    }
+
+    location /api { # reverse proxy for the API service - all the URLs that begin with /api follows this proxy 
+        include proxy_params;
+        proxy_pass http://localhost:5000;
+    }
+}

@@ -17,12 +17,12 @@ class ListDataObject(Resource):
         response = {}
         try:
             query = {
-                'status': 'complete'
+                'status': {'$in': ['complete', 'uploaded'] }
             }
             status = request.args.get('status')
             pipeline_name = request.args.get('pipeline_name')
             latest = request.args.get('latest')
-            if status is not None and status != 'complete':
+            if status is not None:
                 query['status'] = status
             if pipeline_name is not None:
                 query['pipeline_name'] = pipeline_name
