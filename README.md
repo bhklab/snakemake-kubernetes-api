@@ -15,10 +15,12 @@ Example:```curl http://Host_URL/api/data_objects```
 
 2. GET /api/data_object/download
 Downloads a data object to local storage.
+
 Example ```curl 'http://Host_URL/api/data_object/download?data_obj_id=Data_Object_ID' --output File_Name```
 
 3. POST /api/run_pipeline 
 Triggers a data object curation pipeline run.
+
 Example: 
 ```
 curl -X POST http://Host_URL/api/run_pipeline \
@@ -28,6 +30,7 @@ curl -X POST http://Host_URL/api/run_pipeline \
 
 4. POST /api/data_object/upload
 Uploads a data object to Zenodo.
+
 Example:
 ```
 curl -X POST http://Host_URL/api/data_object/upload \
