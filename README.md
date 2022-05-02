@@ -66,9 +66,9 @@ sudo systemctl reload nginx
 pip install gunicorn
 ```
 Copy the service configuration to the system directory
-'''
+```
 sudo cp snakemake-kubernetes-api/setup/orcestra.service /etc/systemd/system
-'''
+```
 Start the service.
 ```
 sudo systemctl daemon-reload
