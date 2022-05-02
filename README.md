@@ -22,6 +22,13 @@ sudo apt install git
 git clone https://github.com/bhklab/snakemake-kubernetes-api.git
 scp -i path_to_the_key path_to_the_.env_file username>@hostname:/path_to_the_app's_root_dir
 ```
+TO DO: Safely store git credentials so that git client can be used without authentication. 
+Currently uses ```git config --global credential.helper store``` to store credential.
+
+### Install DVC
+```
+pip install dvc dvc[s3]
+```
 
 ### Install kubectl
 Install kubectl to be used by Python's kubernetes client package by using the instructions available here: https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/.
@@ -85,7 +92,16 @@ The DVC repo for the data object is here: https://github.com/mnakano/pdtx-dvc.gi
 Clone the snakemake pipeline repo in ```/home/ubuntu/snakemake_workdir```.
 Clone the DVC repo in ```/home/ubuntu/dvc_workdir```.
 
-In the future, when there are large number of pipelines and dvc repositories, the cloning process needs to be automated.
+In each DVC repository, run /bash/dvc_setup.sh to configure the local dvc repository to use Compute Canada S3 sotrage as the remote repository.
+```
+bash snakemake-kubernetes-api/bash/dvc_setup.sh \
+-d repository_name \
+-u remote_repository_url \
+-i remote_repository_access_id \
+-s remote_reposutory_access_key
+```
+
+TO DO: In the future, when there are large number of pipelines and dvc repositories, the cloning process needs to be automated.
 
 
 
