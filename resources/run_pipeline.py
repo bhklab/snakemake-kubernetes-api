@@ -3,7 +3,7 @@ import boto3
 from flask_restful import Resource
 from flask import request
 from datetime import datetime
-from db.models.snakemake_data_object import SnakemakeDataObject 
+from db.models.snakemake_data_object import SnakemakeDataObject
 
 class RunPipeline(Resource):
 
