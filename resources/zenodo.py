@@ -3,6 +3,7 @@ from flask_restful import Resource
 from flask import request
 from db.models.snakemake_data_object import SnakemakeDataObject
 from resources.data_object import download
+from decouple import config
 
 class ZenodoUpload(Resource):
 
@@ -56,7 +57,7 @@ Updates the database document status as 'uploaded'.
 '''
 def fetch_and_upload(object):
     try:
-        tmp_dir = '{0}/{1}'.format(os.environ ['TMP_DIR'], str(object.id))
+        tmp_dir = '{0}/{1}'.format(config('TMP_DIR'), str(object.id))
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
 
@@ -88,10 +89,9 @@ def upload(object, source_dir):
         'publish': False
     }
     try:
-        env = os.environ
         # Create repository
-        BASE_URL = env['ZENODO_URL']
-        ACCESS_TOKEN = env['ZENODO_ACCESS_TOKEN']
+        BASE_URL = config('ZENODO_URL')
+        ACCESS_TOKEN = config('ZENODO_ACCESS_TOKEN')
         res = requests.post(
             BASE_URL + '/api/deposit/depositions',
             params={'access_token': ACCESS_TOKEN}, json={},
