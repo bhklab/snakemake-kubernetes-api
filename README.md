@@ -3,7 +3,7 @@ Flask API to issue snakemake command based on a request.
 The API is to be used for the new data processing layer of ORCESTRA.
 
 ## API End-points
-1. GET /api/data_objects
+**1. GET /api/data_objects**
 Lists data objects. 
 Accepted parameters:
 ```
@@ -13,12 +13,12 @@ latest (optional, defaults to 'false'): boolean, if true, returns the latest pip
 ```
 Example:```curl http://Host_URL/api/data_objects```
 
-2. GET /api/data_object/download
+**2. GET /api/data_object/download**
 Downloads a data object to local storage.
 
 Example ```curl 'http://Host_URL/api/data_object/download?data_obj_id=Data_Object_ID' --output File_Name```
 
-3. POST /api/run_pipeline 
+**3. POST /api/run_pipeline** 
 Triggers a data object curation pipeline run.
 
 Example: 
@@ -28,7 +28,7 @@ curl -X POST http://Host_URL/api/run_pipeline \
    -d '{"pipeline": Pipeline_Name, "filename": Data_Object_Filename}' 
 ```
 
-4. POST /api/data_object/upload
+**4. POST /api/data_object/upload**
 Uploads a data object to Zenodo.
 
 Example:
@@ -58,7 +58,8 @@ sudo apt install git
 git clone https://github.com/bhklab/snakemake-kubernetes-api.git
 scp -i path_to_the_key path_to_the_.env_file username>@hostname:/path_to_the_app's_root_dir
 ```
-TO DO: Safely store git credentials so that git client can be used without authentication. 
+**TO DO**: Safely store git credentials so that git client can be used without authentication. 
+
 Currently uses ```git config --global credential.helper store``` to store credential.
 
 ### Install DVC
@@ -85,12 +86,12 @@ Installation Guide: https://conda.io/projects/conda/en/latest/user-guide/install
 ### Set up the API
 Reference: https://blog.miguelgrinberg.com/post/how-to-deploy-a-react--flask-project
 
-1. Create directories to host snakemake repos and DVC repos.
+**1. Create directories to host snakemake repos and DVC repos.**
 ```
 mkdir -p /home/ubuntu/{snakemake_workdir,dvc_workdir,tmp}
 ```
 
-2. Set up nginx
+**2. Set up nginx**
 ```
 sudo apt-get install -y nginx
 ```
@@ -104,7 +105,7 @@ sudo ln -s /etc/nginx/sites-available/orcestra.nginx /etc/nginx/sites-enabled
 sudo systemctl reload nginx
 ```
 
-3. Set up gunicorn
+**3. Set up gunicorn**
 ```
 pip install gunicorn
 ```
