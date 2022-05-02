@@ -51,7 +51,7 @@ mkdir -p /home/ubuntu/{snakemake_workdir,dvc_workdir,tmp}
 ```
 sudo apt-get install -y nginx
 ```
-Confirm that nginx is installed by going to http://IP_Address_of_the_VM. The browser should display the defauly Nginx page.
+Confirm that nginx is installed by going to ```http://IP_Address_of_the_VM```. The browser should display the defauly Nginx page.
 
 Add orcestra.nginx file in the setup directory to nginx directory and activate the service.
 ```
@@ -77,7 +77,7 @@ sudo systemctl status orcestra
 ```
 You should see "Active: active (running)" around the third line of the output.
 
-Confirm that the service is properly set up by going to http://IP_Address_of_the_VM/api/test. You should see "ok" on the browser.
+Confirm that the service is properly set up by going to ```http://IP_Address_of_the_VM/api/test```. You should see "ok" on the browser.
 
 ### Clone Snakemake and DVC repositories (work in progress)
 Currently there is only one data object curation pipeline as a test: https://github.com/BHKLAB-Pachyderm/pdtx-snakemake.git.
