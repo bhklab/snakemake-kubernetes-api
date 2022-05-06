@@ -21,11 +21,11 @@ class RunPipeline(Resource):
         pipeline_name = req_body['pipeline']
         filename = req_body['filename']
         # git_url = 'www.github.com'
-        # git_sha = '1234567890'
+        # git_sha = 'fe94aca197510d444b810ade4bcb8f83aebc532f'
         # repo_name = 'pdtx-snakemake'
 
-        git_url = "https://github.com/" + config('SNAKEMAKE_GIT_ACCOUNT') + "/" + pipeline_name + "-snakemake.git" # to be replaced with proper
-
+        # check if the requested pipeline repository exists in the orcestra git account.
+        git_url = "https://github.com/" + config('SNAKEMAKE_GIT_ACCOUNT') + "/" + pipeline_name + "-snakemake.git" 
         repo_name = re.findall(r'.*/(.*?).git$', git_url)
         repo_name = repo_name[0] if len(repo_name) > 0 else None
 
@@ -41,7 +41,14 @@ class RunPipeline(Resource):
                 stdout, std_err = git_process.communicate()
                 git_sha = re.split(r'\t+', stdout.decode('ascii'))[0]
 
+                # look for data objects in the db that has been either
+                # 1. already processed / uploaded with the latest version of the pipeline, or
+                # 2. currently being processed with the requested pipeline.
+                object = None
                 object = SnakemakeDataObject.objects(pipeline_name=pipeline_name, commit_id=git_sha).first()
+                if(object is None):
+                    object = SnakemakeDataObject.objects(pipeline_name=pipeline_name, status='processing').first()
+
                 if(object is None):
                     # Define the snakemake execution command.
                     snakemake_cmd = [
@@ -76,14 +83,20 @@ class RunPipeline(Resource):
                     thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, pipeline_name, filename, str(entry.id)])
                     thread.start()
 
+                    response['status'] = 'submitted'
                     response['message'] = 'Pipeline submitted'
                     response['process_id'] = str(entry.id)
                     response['git_url'] = git_url
                     response['repository_name'] = repo_name
                     response['commit_id'] = git_sha
                 else:
-                    response['message'] = 'A %s data object with the latest pipeline already exists' % pipeline_name
+                    response['status'] = 'not_submitted'
+                    if (object.status.value == 'complete') | (object.status.value == 'uploaded'):
+                        response['message'] = 'A data object processted with the latest %s pipeline already exists.' % pipeline_name
+                    if object.status.value == 'processing':
+                        response['message'] = 'Another data object is currently being processed with %s pipeline.' % pipeline_name
                     response['object'] = object.serialize()
+
             except Exception as e:
                 print('Exception ', e)
                 print(traceback.format_exc())
@@ -91,8 +104,8 @@ class RunPipeline(Resource):
                 response['message'] = str(e)
                 status = 500
         else:
-            response['error'] = 1
-            response['message'] = 'Repository name could not be found. Pipeline not submitted.'
+            response['status'] = 'not_submitted'
+            response['message'] = 'Repository name could not be found.'
 
         return(response, status)
     
