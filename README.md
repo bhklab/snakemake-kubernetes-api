@@ -37,7 +37,7 @@ curl -X POST http://Host_URL/api/data_object/upload \
    -d '{"data_obj_id": Data_Object_ID}' 
 ```
 
-## Set up
+## Set up in a Compute Canada VM
 All commands should be executed from the user's top level directory.
 
 ### Update the package manager 
