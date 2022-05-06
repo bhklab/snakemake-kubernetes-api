@@ -1,6 +1,5 @@
 # snakemake-kubernetes-api
-Flask API to issue snakemake command based on a request.
-The API is to be used for the new data processing layer of ORCESTRA.
+Flask API is to be used for the new data processing layer of ORCESTRA.
 
 ## API End-points
 **1. GET /api/data_objects**
