@@ -1,5 +1,5 @@
 # snakemake-kubernetes-api
-Flask API is to be used for the new data processing layer of ORCESTRA.
+Flask API to be used as the new data processing layer of ORCESTRA.
 
 ## API End-points
 **1. GET /api/data_objects**
