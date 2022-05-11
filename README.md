@@ -10,12 +10,19 @@ status (optional, by default it returns 'complete' and 'uploaded' data objects):
 pipeline_name (optional): string value for pipeline name
 latest (optional, defaults to 'false'): boolean, if true, returns the latest pipeline run filtered with other parameters.
 ```
-Example:```curl http://Host_URL/api/data_objects```
+
+Example:
+```
+curl http://Host_URL/api/data_objects
+```
 
 **2. GET /api/data_object/download**
 Downloads a data object to local storage.
 
-Example ```curl 'http://Host_URL/api/data_object/download?data_obj_id=Data_Object_ID' --output File_Name```
+Example: 
+```
+curl 'http://Host_URL/api/data_object/download?data_obj_id=Data_Object_ID' --output File_Name
+```
 
 **3. POST /api/run_pipeline** 
 Triggers a data object curation pipeline run.
