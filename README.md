@@ -37,6 +37,23 @@ curl -X POST http://Host_URL/api/data_object/upload \
    -d '{"data_obj_id": Data_Object_ID}' 
 ```
 
+**5. GET /api/logs**
+Returns a list of log files for a pipeline.
+
+Example:
+```
+curl http://Host_URL/api/logs?pipeline=Pipeline_Name
+```
+
+**6. GET /api/log/download**
+Downloads a specified log file for a pipeline.
+
+Example:
+```
+curl http://Host_URL/api/log/download?pipeline=Pipeline_Name&filename=Log_File_Name --output Log_File_Name
+```
+
+
 ## Set up in a Compute Canada VM
 All commands should be executed from the user's top level directory.
 
