@@ -60,6 +60,21 @@ Example:
 curl http://Host_URL/api/log/download?pipeline=Pipeline_Name&filename=Log_File_Name --output Log_File_Name
 ```
 
+**7. GET /api/k8/error_pods**
+If there is an error, Kubernetes pod will not be deleted. This API route gets a list of pods in error status.
+
+Example:
+```
+curl http://Host_URL/api/k8/error_pods
+```
+
+**8. GET /api/k8/pod_log**
+Returns Kubernetes log of a specified pod.
+
+Example:
+```
+curl http://Host_URL/api/k8/pod_log?podname=Pod_Name_From_Snakemake_Log_Or_List_Of_K8_Error_Pods
+```
 
 ## Set up in a Compute Canada VM
 All commands should be executed from the user's top level directory.
