@@ -61,4 +61,6 @@ class DownloadLog(Resource):
                 return response, status
     
     def post(self):
-        return 'Only get request is allowed', 400      
+        return 'Only get request is allowed', 400    
+
+ 

@@ -10,6 +10,7 @@ from resources.pipeline import ListPipeline
 from resources.data_object import ListDataObject, DownloadDataObject
 from resources.zenodo import ZenodoUpload
 from resources.logs import ListLogs, DownloadLog
+from resources.k8 import K8ErrorPods, K8ErrorLog
 from resources.test import Test
 
 app = Flask(__name__)
@@ -29,4 +30,6 @@ api.add_resource(DownloadDataObject, '/api/data_object/download')
 api.add_resource(ZenodoUpload, '/api/data_object/upload')
 api.add_resource(ListLogs, '/api/logs')
 api.add_resource(DownloadLog, '/api/log/download')
+api.add_resource(K8ErrorPods, '/api/k8/error_pods')
+api.add_resource(K8ErrorLog, '/api/k8/pod_log')
 api.add_resource(Test, '/api/test')
