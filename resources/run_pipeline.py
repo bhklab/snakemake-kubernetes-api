@@ -3,6 +3,7 @@ import boto3
 from flask_restful import Resource
 from flask import request
 from datetime import datetime
+from db.models.snakemake_pipeline import SnakemakePipeline
 from db.models.snakemake_data_object import SnakemakeDataObject
 from decouple import config
 
@@ -19,25 +20,23 @@ class RunPipeline(Resource):
         snakemake_env = os.environ.copy()
         req_body = request.get_json()
         pipeline_name = req_body['pipeline']
-        filename = req_body['filename']
         # git_url = 'www.github.com'
         # git_sha = 'fe94aca197510d444b810ade4bcb8f83aebc532f'
         # repo_name = 'pdtx-snakemake'
 
-        # check if the requested pipeline repository exists in the orcestra git account.
-        git_url = "https://github.com/" + config('SNAKEMAKE_GIT_ACCOUNT') + "/" + pipeline_name + "-snakemake.git" 
-        repo_name = re.findall(r'.*/(.*?).git$', git_url)
-        repo_name = repo_name[0] if len(repo_name) > 0 else None
+        # find the pipeline
+        pipeline = None
+        pipeline = SnakemakePipeline.objects(name=pipeline_name).first()
 
-        if repo_name is not None:
+        if pipeline is not None:
             try:
                 # Pull the latest Snakefile and environment configs.
-                work_dir = '{0}/{1}'.format(config('SNAKEMAKE_ROOT'), repo_name)
+                work_dir = '{0}/{1}'.format(config('SNAKEMAKE_ROOT'), pipeline.repository_name)
                 git_process = subprocess.Popen(['git', '-C', work_dir, 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 git_process.wait()
                 
                 # Get the commit id of the latest Snakefile version.
-                git_process = subprocess.Popen(["git", "ls-remote", git_url], stdout=subprocess.PIPE)
+                git_process = subprocess.Popen(["git", "ls-remote", pipeline.git_url], stdout=subprocess.PIPE)
                 stdout, std_err = git_process.communicate()
                 git_sha = re.split(r'\t+', stdout.decode('ascii'))[0]
 
@@ -45,11 +44,23 @@ class RunPipeline(Resource):
                 # 1. already processed / uploaded with the latest version of the pipeline, or
                 # 2. currently being processed with the requested pipeline.
                 object = None
-                object = SnakemakeDataObject.objects(pipeline_name=pipeline_name, commit_id=git_sha).first()
+                object = SnakemakeDataObject.objects(pipeline=pipeline, commit_id=git_sha).first()
                 if(object is None):
-                    object = SnakemakeDataObject.objects(pipeline_name=pipeline_name, status='processing').first()
+                    object = SnakemakeDataObject.objects.filter(pipeline=pipeline, status='processing').first()
 
                 if(object is None):
+                    for repo in pipeline.additional_data_repo:
+                        repo_git_process = subprocess.Popen(["git", "ls-remote", repo.git_url], stdout=subprocess.PIPE)
+                        stdout, std_err = repo_git_process.communicate()
+                        repo.commit_id = re.split(r'\t+', stdout.decode('ascii'))[0]
+                    data_repo = [
+                        'additional_data={0}'.format(pipeline.git_url.replace('.git', '/raw/{0}/'.format(git_sha)))
+                    ]
+                    data_repo = data_repo + list(map(
+                        lambda repo: '{0}={1}'.format(repo.repo_type, repo.git_url.replace('.git', '/raw/{0}/'.format(repo.commit_id))), 
+                        pipeline.additional_data_repo
+                    ))
+                    
                     # Define the snakemake execution command.
                     snakemake_cmd = [
                         '/home/ubuntu/miniconda3/envs/orcestra-snakemake/bin/snakemake',
@@ -62,32 +73,32 @@ class RunPipeline(Resource):
                         '--jobs', '3',
                         '-R', 'get_pset',
                         '--config', 
-                        'prefix={0}/snakemake/{1}/'.format(config('S3_BUCKET'), pipeline_name), 
+                        'prefix={0}/snakemake/{1}/'.format(config('S3_BUCKET'), pipeline.name), 
                         'key={0}'.format(config('S3_ACCESS_KEY_ID')), 
                         'secret={0}'.format(config('S3_SECRET_ACCESS_KEY')),
                         'host={0}'.format(config('S3_URL')),
-                        'filename={0}'.format(filename)
+                        'filename={0}'.format(pipeline.object_name),
                     ]
+                    snakemake_cmd = snakemake_cmd + data_repo
 
                     # Insert the data processing entry to db.
                     entry = SnakemakeDataObject(
-                        pipeline_name = pipeline_name,
-                        filename = filename,
-                        git_url = git_url,
+                        pipeline = pipeline,
+                        additional_data_repo = pipeline.additional_data_repo,
                         commit_id = git_sha,
                         status = 'processing',
                         process_start_date = datetime.now()
                     ).save()
 
                     # Start the snakemake job.
-                    thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, pipeline_name, filename, str(entry.id)])
+                    thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, pipeline.name, pipeline.object_name, str(entry.id)])
                     thread.start()
 
                     response['status'] = 'submitted'
                     response['message'] = 'Pipeline submitted'
                     response['process_id'] = str(entry.id)
-                    response['git_url'] = git_url
-                    response['repository_name'] = repo_name
+                    response['git_url'] = pipeline.git_url
+                    response['repository_name'] = pipeline.repository_name
                     response['commit_id'] = git_sha
                 else:
                     response['status'] = 'not_submitted'
@@ -105,7 +116,7 @@ class RunPipeline(Resource):
                 status = 500
         else:
             response['status'] = 'not_submitted'
-            response['message'] = 'Repository name could not be found.'
+            response['message'] = 'Pipeline does not exist.'
 
         return(response, status)
     

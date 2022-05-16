@@ -1,5 +1,6 @@
 from db import db
 from enum import Enum
+from db.models.snakemake_pipeline import SnakemakePipeline, DataRepo
 
 class Status(Enum):
     PROCESSING='processing'
@@ -8,10 +9,9 @@ class Status(Enum):
     ERROR='error'
 
 class SnakemakeDataObject(db.Document):
-    pipeline_name = db.StringField()
-    repository_name = db.StringField()
+    pipeline = db.ReferenceField(SnakemakePipeline)
+    additional_data_repo = db.ListField(db.EmbeddedDocumentField(DataRepo))
     filename = db.StringField()
-    git_url = db.StringField()
     commit_id = db.StringField()
     md5 = db.StringField()
     status = db.EnumField(Status, default=Status.PROCESSING)
@@ -25,10 +25,17 @@ class SnakemakeDataObject(db.Document):
     def serialize(self):
         return({
             '_id': str(self.pk),
-            'pipeline_name': self.pipeline_name,
-            'repository_name': self.repository_name,
-            'filename': self.filename,
-            'git_url': self.git_url,
+            'pipeline': {
+                'name': self.pipeline.name,
+                'repository_name': self.pipeline.repository_name,
+                'git_url': self.pipeline.git_url,
+                'object_name': self.pipeline.object_name
+            },
+            'additional_data_repo': list(map(lambda repo: {
+                'repo_type': repo.repo_type,
+                'git_url': repo.git_url,
+                'commit_id': repo.commit_id
+            }, self.additional_data_repo)),
             'commit_id': self.commit_id,
             'md5': self.md5 if self.md5 is not None else None,
             'status': self.status.value,

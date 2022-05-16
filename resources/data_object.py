@@ -3,6 +3,7 @@ from decouple import config
 from flask_restful import Resource
 from flask import request, send_file
 from db.models.snakemake_data_object import SnakemakeDataObject
+from db.models.snakemake_pipeline import SnakemakePipeline
 
 class ListDataObject(Resource):
     '''
@@ -25,9 +26,11 @@ class ListDataObject(Resource):
             if status is not None:
                 query['status'] = status
             if pipeline_name is not None:
-                query['pipeline_name'] = pipeline_name
+                pipeline = SnakemakePipeline.objects(name=pipeline_name).first()
+                if pipeline is not None:
+                    query['pipeline'] = pipeline.pk
             
-            objects = SnakemakeDataObject.objects(**query).order_by('-id')
+            objects = SnakemakeDataObject.objects.filter(**query).order_by('-id')
             
             if latest:
                 response['object'] = objects[0].serialize()
@@ -61,7 +64,7 @@ class DownloadDataObject(Resource):
                     response['message'] = 'Unable to download. Data object is being processed.'
                 else:
                     tmp_dir = '{0}/{1}'.format(config('TMP_DIR'), str(object.id))
-                    file_path = tmp_dir + '/' + object.filename
+                    file_path = tmp_dir + '/' + object.pipeline.object_name
                     if not os.path.exists(tmp_dir):
                         os.makedirs(tmp_dir)
                     if not os.path.exists(file_path):
@@ -76,7 +79,7 @@ class DownloadDataObject(Resource):
             status = 500
         finally:
             if file_path is not None:
-                return send_file(file_path, as_attachment=True, attachment_filename=object.filename)
+                return send_file(file_path, as_attachment=True, attachment_filename=object.pipeline.object_name)
             else:
                 return response, status
     
@@ -95,8 +98,8 @@ def download(object, dest_dir):
         )
         s3_client.download_file(
             config('S3_BUCKET'), 
-            'dvc/{0}/{1}/{2}'.format(object.pipeline_name, object.md5[:2], object.md5[2:]), 
-            '{0}/{1}'.format(dest_dir, object.filename)
+            'dvc/{0}/{1}/{2}'.format(object.pipeline.name, object.md5[:2], object.md5[2:]), 
+            '{0}/{1}'.format(dest_dir, object.pipeline.object_name)
         )
     except Exception as e:
         print('Exception ', e)
