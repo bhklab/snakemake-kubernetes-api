@@ -1,0 +1,13 @@
+{
+    "name": "Name of the pipeline",
+    "git_url": "GitHub URL of the snakemake pipeline repository",
+    "dvc_git": "GitHub URL of the DVC repository (empty git repo, to be initialized upon request)",
+    "object_name": "Full name of the data object, usually a .rds file",
+    "additional_data_repo": [{
+            "repo_type": "repo type 1",
+            "git_url": "git url"
+    }, {
+            "repo_type": "repo type 2",
+            "git_url": "git url"
+    }]
+}
