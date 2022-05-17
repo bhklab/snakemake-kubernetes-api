@@ -99,7 +99,7 @@ def download(object, dest_dir):
         s3_client.download_file(
             config('S3_BUCKET'), 
             'dvc/{0}/{1}/{2}'.format(object.pipeline.name, object.md5[:2], object.md5[2:]), 
-            '{0}/{1}'.format(dest_dir, object.pipeline.object_name)
+            os.path.join(dest_dir, object.pipeline.object_name)
         )
     except Exception as e:
         print('Exception ', e)

@@ -57,7 +57,7 @@ Updates the database document status as 'uploaded'.
 '''
 def fetch_and_upload(object):
     try:
-        tmp_dir = '{0}/{1}'.format(config('TMP_DIR'), str(object.id))
+        tmp_dir = os.path.join(config('TMP_DIR'), str(object.id))
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
 

@@ -7,13 +7,16 @@ from db.models.snakemake_pipeline import SnakemakePipeline
 from db.models.snakemake_data_object import SnakemakeDataObject
 from decouple import config
 
+'''
+Resource class that triggers a snakemake pipeline run, 
+and adds the finalized data object to dvc repo.
+'''
 class RunPipeline(Resource):
 
     def get(self):
         return "Only post request is allowed", 400
     
     def post(self):
-        print('create pipeline')
         status = 200
         response = {}
         
@@ -30,8 +33,13 @@ class RunPipeline(Resource):
 
         if pipeline is not None:
             try:
+                snakemake_repo_name = re.findall(r'.*/(.*?).git$', pipeline.git_url)
+                snakemake_repo_name = snakemake_repo_name[0] if len(snakemake_repo_name) > 0 else None
+                dvc_repo_name = re.findall(r'.*/(.*?).git$', pipeline.dvc_git)
+                dvc_repo_name = dvc_repo_name[0] if len(dvc_repo_name) > 0 else None
+                
                 # Pull the latest Snakefile and environment configs.
-                work_dir = '{0}/{1}'.format(config('SNAKEMAKE_ROOT'), pipeline.repository_name)
+                work_dir = os.path.join(config('SNAKEMAKE_ROOT'), snakemake_repo_name)
                 git_process = subprocess.Popen(['git', '-C', work_dir, 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 git_process.wait()
                 
@@ -87,14 +95,23 @@ class RunPipeline(Resource):
                     ).save()
 
                     # Start the snakemake job.
-                    thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, pipeline.name, pipeline.object_name, str(entry.id)])
+                    thread = threading.Thread(
+                        target=run_in_thread, 
+                        args=[
+                            snakemake_cmd, 
+                            snakemake_env, 
+                            pipeline.name,
+                            dvc_repo_name, 
+                            pipeline.object_name, 
+                            str(entry.id)
+                        ]
+                    )
                     thread.start()
 
                     response['status'] = 'submitted'
                     response['message'] = 'Pipeline submitted'
                     response['process_id'] = str(entry.id)
                     response['git_url'] = pipeline.git_url
-                    response['repository_name'] = pipeline.repository_name
                     response['commit_id'] = git_sha
                 else:
                     response['status'] = 'not_submitted'
@@ -116,7 +133,7 @@ class RunPipeline(Resource):
 
         return(response, status)
     
-def run_in_thread(cmd, env, pipeline_name, filename, object_id):
+def run_in_thread(cmd, env, pipeline_name, dvc_repo_name, filename, object_id):
     try:
         # Execute the snakemake job.
         snakemake_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -140,7 +157,7 @@ def run_in_thread(cmd, env, pipeline_name, filename, object_id):
         s3_client.download_file(
             config('S3_BUCKET'), 
             'snakemake/{0}/{1}'.format(pipeline_name, filename), 
-            '{0}/{1}-dvc/{2}'.format(config('DVC_ROOT'), pipeline_name, filename)
+            os.path.join(config('DVC_ROOT'), dvc_repo_name, filename)
         )
         print('download complete')
         
@@ -149,20 +166,18 @@ def run_in_thread(cmd, env, pipeline_name, filename, object_id):
         add_data_cmd = [
             'bash',
             os.path.join(cwd, 'bash', 'dvc_add.sh'),
-            '-r', config('DVC_ROOT'),
+            '-r', os.path.join(config('DVC_ROOT'), dvc_repo_name),
             '-d', pipeline_name,
             '-f', filename
         ]
         dvc_process = subprocess.Popen(add_data_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        dvc_p_out = []
         while True:
             line = dvc_process.stdout.readline()
             if not line:
                 break
             else:
                 print(line.rstrip().decode("utf-8"))
-                dvc_p_out.append(line.rstrip().decode("utf-8"))
-        with open(config('DVC_ROOT') + '/' + pipeline_name + "-dvc/" + filename + ".dvc") as file:
+        with open(os.path.join(config('DVC_ROOT'), dvc_repo_name, filename + ".dvc")) as file:
             lines = [line.rstrip() for line in file]
         r = re.compile("^- md5:.*")
         found = next(filter(r.match, lines), None)

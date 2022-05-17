@@ -2,7 +2,7 @@
 Flask API to be used as the new data processing layer of ORCESTRA.
 
 ## API End-points
-**1. GET /api/data_objects**
+**1. GET /api/data_object/list**
 Lists data objects. 
 Accepted parameters:
 ```
@@ -13,7 +13,7 @@ latest (optional, defaults to 'false'): boolean, if true, returns the latest pip
 
 Example:
 ```
-curl http://Host_URL/api/data_objects
+curl http://Host_URL/api/data_object/list
 ```
 
 **2. GET /api/data_object/download**
@@ -24,7 +24,7 @@ Example:
 curl 'http://Host_URL/api/data_object/download?data_obj_id=Data_Object_ID' --output File_Name
 ```
 
-**3. POST /api/run_pipeline** 
+**3. POST /api/pipeline/run** 
 Triggers a data object curation pipeline run.
 
 Example: 
@@ -44,7 +44,7 @@ curl -X POST http://Host_URL/api/data_object/upload \
    -d '{"data_obj_id": Data_Object_ID}' 
 ```
 
-**5. GET /api/logs**
+**5. GET /api/log/list**
 Returns a list of log files for a pipeline.
 
 Example:

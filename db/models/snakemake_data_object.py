@@ -26,9 +26,9 @@ class SnakemakeDataObject(db.Document):
             '_id': str(self.pk),
             'pipeline': {
                 'name': self.pipeline.name,
-                'repository_name': self.pipeline.repository_name,
                 'git_url': self.pipeline.git_url,
-                'object_name': self.pipeline.object_name
+                'object_name': self.pipeline.object_name,
+                'dvc_git': self.pipeline.dvc_git
             },
             'additional_data_repo': list(map(lambda repo: {
                 'repo_type': repo.repo_type,

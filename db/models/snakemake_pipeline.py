@@ -7,7 +7,6 @@ class DataRepo(db.EmbeddedDocument):
 
 class SnakemakePipeline(db.Document):
     name = db.StringField()
-    repository_name = db.StringField()
     git_url = db.StringField()
     dvc_git = db.StringField()
     object_name = db.StringField()
@@ -17,7 +16,6 @@ class SnakemakePipeline(db.Document):
         return({
             '_id': str(self.pk),
             'name': self.name,
-            'repository_name': self.repository_name,
             'object_name': self.object_name,
             'git_url': self.git_url,
             'dvc_git': self.dvc_git,
