@@ -32,8 +32,8 @@ class RunPipeline(Resource):
             try:
                 # Pull the latest Snakefile and environment configs.
                 work_dir = '{0}/{1}'.format(config('SNAKEMAKE_ROOT'), pipeline.repository_name)
-                git_process = subprocess.Popen(['git', '-C', work_dir, 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                git_process.wait()
+                # git_process = subprocess.Popen(['git', '-C', work_dir, 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                # git_process.wait()
                 
                 # Get the commit id of the latest Snakefile version.
                 git_process = subprocess.Popen(["git", "ls-remote", pipeline.git_url], stdout=subprocess.PIPE)
@@ -53,10 +53,7 @@ class RunPipeline(Resource):
                         repo_git_process = subprocess.Popen(["git", "ls-remote", repo.git_url], stdout=subprocess.PIPE)
                         stdout, std_err = repo_git_process.communicate()
                         repo.commit_id = re.split(r'\t+', stdout.decode('ascii'))[0]
-                    data_repo = [
-                        'additional_data={0}'.format(pipeline.git_url.replace('.git', '/raw/{0}/'.format(git_sha)))
-                    ]
-                    data_repo = data_repo + list(map(
+                    data_repo = list(map(
                         lambda repo: '{0}={1}'.format(repo.repo_type, repo.git_url.replace('.git', '/raw/{0}/'.format(repo.commit_id))), 
                         pipeline.additional_data_repo
                     ))
@@ -91,8 +88,8 @@ class RunPipeline(Resource):
                     ).save()
 
                     # Start the snakemake job.
-                    thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, pipeline.name, pipeline.object_name, str(entry.id)])
-                    thread.start()
+                    # thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, pipeline.name, pipeline.object_name, str(entry.id)])
+                    # thread.start()
 
                     response['status'] = 'submitted'
                     response['message'] = 'Pipeline submitted'
