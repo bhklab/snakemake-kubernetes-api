@@ -31,7 +31,7 @@ Example:
 ```
 curl -X POST http://Host_URL/api/run_pipeline \
    -H "Content-Type: application/json" \
-   -d '{"pipeline": Pipeline_Name, "filename": Data_Object_Filename}' 
+   -d '{"pipeline": Pipeline_Name}' 
 ```
 
 **4. POST /api/data_object/upload**
@@ -167,7 +167,7 @@ The DVC repo for the data object is here: https://github.com/mnakano/pdtx-dvc.gi
 Clone the snakemake pipeline repo in ```/home/ubuntu/snakemake_workdir```.
 Clone the DVC repo in ```/home/ubuntu/dvc_workdir```.
 
-In each DVC repository, run /bash/dvc_setup.sh to configure the local dvc repository to use Compute Canada S3 sotrage as the remote repository.
+In each DVC repository, run /bash/dvc_setup.sh to configure the local dvc repository to use Compute Canada S3 storage as the remote repository.
 ```
 bash snakemake-kubernetes-api/bash/dvc_setup.sh \
 -d repository_name \
