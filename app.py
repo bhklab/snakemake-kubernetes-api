@@ -1,4 +1,4 @@
-import os
+import os, click
 from flask import Flask
 from flask_restful import Api
 from flask_cors import CORS
@@ -13,6 +13,7 @@ from resources.zenodo import ZenodoUpload
 from resources.logs import ListLogs, DownloadLog
 from resources.k8 import K8ErrorPods, K8ErrorLog
 from resources.test import Test
+from maintenance.pipeline import delete
 
 app = Flask(__name__)
 
@@ -35,3 +36,11 @@ api.add_resource(DownloadLog, '/api/log/download')
 api.add_resource(K8ErrorPods, '/api/k8/error_pods')
 api.add_resource(K8ErrorLog, '/api/k8/pod_log')
 api.add_resource(Test, '/api/test')
+
+'''
+flask cli commands for app/db maintenance
+'''
+@app.cli.command("delete-pipeline")
+@click.option('--pipeline')
+def delete_pipeline(pipeline):
+    delete(pipeline)

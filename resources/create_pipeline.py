@@ -1,5 +1,4 @@
-import subprocess, os, threading, re, traceback
-import boto3
+import subprocess, os, re, traceback
 from flask_restful import Resource
 from flask import request
 from db.models.snakemake_pipeline import SnakemakePipeline

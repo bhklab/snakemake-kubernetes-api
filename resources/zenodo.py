@@ -1,4 +1,4 @@
-import os, threading, traceback, json, requests
+import os, threading, traceback, json, requests, shutil
 from flask_restful import Resource
 from flask import request
 from db.models.snakemake_data_object import SnakemakeDataObject
@@ -76,7 +76,7 @@ def fetch_and_upload(object):
                 doi=result['doi'],
                 download_link=result['download_link']
             )
-
+        shutil.rmtree(tmp_dir)
     except Exception as e:
         print('Exception ', e)
         print(traceback.format_exc())
