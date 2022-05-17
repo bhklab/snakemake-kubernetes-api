@@ -32,8 +32,8 @@ class RunPipeline(Resource):
             try:
                 # Pull the latest Snakefile and environment configs.
                 work_dir = '{0}/{1}'.format(config('SNAKEMAKE_ROOT'), pipeline.repository_name)
-                # git_process = subprocess.Popen(['git', '-C', work_dir, 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                # git_process.wait()
+                git_process = subprocess.Popen(['git', '-C', work_dir, 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                git_process.wait()
                 
                 # Get the commit id of the latest Snakefile version.
                 git_process = subprocess.Popen(["git", "ls-remote", pipeline.git_url], stdout=subprocess.PIPE)
@@ -68,7 +68,6 @@ class RunPipeline(Resource):
                         '--default-remote-prefix', config('S3_BUCKET'),
                         '--default-remote-provider', 'S3',
                         '--jobs', '3',
-                        '-R', 'get_pset',
                         '--config', 
                         'prefix={0}/snakemake/{1}/'.format(config('S3_BUCKET'), pipeline.name), 
                         'key={0}'.format(config('S3_ACCESS_KEY_ID')), 
@@ -88,8 +87,8 @@ class RunPipeline(Resource):
                     ).save()
 
                     # Start the snakemake job.
-                    # thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, pipeline.name, pipeline.object_name, str(entry.id)])
-                    # thread.start()
+                    thread = threading.Thread(target=run_in_thread, args=[snakemake_cmd, snakemake_env, pipeline.name, pipeline.object_name, str(entry.id)])
+                    thread.start()
 
                     response['status'] = 'submitted'
                     response['message'] = 'Pipeline submitted'
@@ -167,7 +166,6 @@ def run_in_thread(cmd, env, pipeline_name, filename, object_id):
             lines = [line.rstrip() for line in file]
         r = re.compile("^- md5:.*")
         found = next(filter(r.match, lines), None)
-        md5 = ""
         if found:
             md5 = re.findall(r'- md5:\s(.*?)$', found)
             print('data added: ' + md5[0])
@@ -180,16 +178,21 @@ def run_in_thread(cmd, env, pipeline_name, filename, object_id):
             )
         else:
             print('md5 not found')
+        
+        # delete snakemake data
+        response = s3_client.list_objects_v2(Bucket=config('S3_BUCKET'), Prefix='snakemake/{0}/'.format(pipeline_name))
+        for object in response['Contents']:
+            s3_client.delete_object(Bucket=config('S3_BUCKET'), Key=object['Key'])
+        print('complete')
     except Exception as e:
         #Log error to db and email notification.
         print('error')
-        update_db_with_error(object_id, str(e))
+        obj = SnakemakeDataObject.objects(id = object_id).first()
+        obj.update(
+            process_end_date=datetime.now(),
+            status='error',
+            error_message=error_message
+        )
         raise
 
-def update_db_with_error(object_id, error_message):
-    obj = SnakemakeDataObject.objects(id = object_id).first()
-    obj.update(
-        process_end_date=datetime.now(),
-        status='error',
-        error_message=error_message
-    )
+
