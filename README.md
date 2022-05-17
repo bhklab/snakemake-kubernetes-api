@@ -2,7 +2,36 @@
 Flask API to be used as the new data processing layer of ORCESTRA.
 
 ## API End-points
-**1. GET /api/data_object/list**
+
+**GET /api/pipeline/list** 
+Lists all pipelines.
+
+Example: 
+```
+curl http://Host_URL/api/pipeline/list
+```
+
+**POST /api/pipeline/create** 
+Creates a pipeline based on json object.
+
+Example: 
+```
+curl -X POST http://Host_URL/api/pipeline/create \
+   -H "Content-Type: application/json" \
+   -d SEE EXAMPLE JSON FILE 
+```
+
+**POST /api/pipeline/run** 
+Triggers a data object curation pipeline run.
+
+Example: 
+```
+curl -X POST http://Host_URL/api/pipeline/run \
+   -H "Content-Type: application/json" \
+   -d '{"pipeline": Pipeline_Name}' 
+```
+
+**GET /api/data_object/list**
 Lists data objects. 
 Accepted parameters:
 ```
@@ -16,7 +45,7 @@ Example:
 curl http://Host_URL/api/data_object/list
 ```
 
-**2. GET /api/data_object/download**
+**GET /api/data_object/download**
 Downloads a data object to local storage.
 
 Example: 
@@ -24,17 +53,7 @@ Example:
 curl 'http://Host_URL/api/data_object/download?data_obj_id=Data_Object_ID' --output File_Name
 ```
 
-**3. POST /api/pipeline/run** 
-Triggers a data object curation pipeline run.
-
-Example: 
-```
-curl -X POST http://Host_URL/api/run_pipeline \
-   -H "Content-Type: application/json" \
-   -d '{"pipeline": Pipeline_Name}' 
-```
-
-**4. POST /api/data_object/upload**
+**POST /api/data_object/upload**
 Uploads a data object to Zenodo.
 
 Example:
@@ -44,7 +63,7 @@ curl -X POST http://Host_URL/api/data_object/upload \
    -d '{"data_obj_id": Data_Object_ID}' 
 ```
 
-**5. GET /api/log/list**
+**GET /api/log/list**
 Returns a list of log files for a pipeline.
 
 Example:
@@ -52,7 +71,7 @@ Example:
 curl http://Host_URL/api/logs?pipeline=Pipeline_Name
 ```
 
-**6. GET /api/log/download**
+**GET /api/log/download**
 Downloads a specified log file for a pipeline.
 
 Example:
@@ -60,7 +79,7 @@ Example:
 curl http://Host_URL/api/log/download?pipeline=Pipeline_Name&filename=Log_File_Name --output Log_File_Name
 ```
 
-**7. GET /api/k8/error_pods**
+**GET /api/k8/error_pods**
 If there is an error, Kubernetes pod will not be deleted. This API route gets a list of pods in error status.
 
 Example:
@@ -68,7 +87,7 @@ Example:
 curl http://Host_URL/api/k8/error_pods
 ```
 
-**8. GET /api/k8/pod_log**
+**GET /api/k8/pod_log**
 Returns Kubernetes log of a specified pod.
 
 Example:
