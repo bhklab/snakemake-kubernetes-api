@@ -18,7 +18,7 @@ Example:
 ```
 curl -X POST http://Host_URL/api/pipeline/create \
    -H "Content-Type: application/json" \
-   -d SEE EXAMPLE JSON FILE (pipeline_example.json) 
+   -d SEE EXAMPLE JSON FILE (examples/create_pipeline_example.json) 
 ```
 
 **POST /api/pipeline/run** 
@@ -28,7 +28,7 @@ Example:
 ```
 curl -X POST http://Host_URL/api/pipeline/run \
    -H "Content-Type: application/json" \
-   -d '{"pipeline": Pipeline_Name}' 
+   -d SEE EXAMPLE JSON FILE (examples/run_pipeline_example.json) 
 ```
 
 **GET /api/data_object/list**
