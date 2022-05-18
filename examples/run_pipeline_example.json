@@ -1,0 +1,5 @@
+{
+    "name": "Name of the pipeline",
+    "run_all": false, // true if you want to run all the steps of the pipeline.
+    "preserved_data": ["list of object storage keys for the data that you want to keep for this pipeline run"]
+}
