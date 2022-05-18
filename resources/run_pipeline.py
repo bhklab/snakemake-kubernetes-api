@@ -7,6 +7,14 @@ from db.models.snakemake_pipeline import SnakemakePipeline
 from db.models.snakemake_data_object import SnakemakeDataObject
 from decouple import config
 
+# S3 storage client used to interact with a remote object storage.
+s3_client = boto3.client(
+    's3',
+    endpoint_url=config('S3_URL'),
+    aws_access_key_id=config('S3_ACCESS_KEY_ID'),
+    aws_secret_access_key=config('S3_SECRET_ACCESS_KEY')
+)
+
 '''
 Resource class that triggers a snakemake pipeline run, 
 and adds the finalized data object to dvc repo.
@@ -22,10 +30,10 @@ class RunPipeline(Resource):
         
         snakemake_env = os.environ.copy()
         req_body = request.get_json()
-        pipeline_name = req_body['pipeline']
-        # git_url = 'www.github.com'
-        # git_sha = 'fe94aca197510d444b810ade4bcb8f83aebc532f'
-        # repo_name = 'pdtx-snakemake'
+        pipeline_name = req_body.get('pipeline')
+        run_all = req_body.get('run_all')
+        preserved_data = req_body.get('preserved_data')
+        preserved_data = ['large_data'] + preserved_data if preserved_data is not None and isinstance(preserved_data, list) else []
 
         # find the pipeline
         pipeline = None
@@ -51,12 +59,12 @@ class RunPipeline(Resource):
                 # look for data objects in the db that has been either
                 # 1. already processed / uploaded with the latest version of the pipeline, or
                 # 2. currently being processed with the requested pipeline.
-                object = None
-                object = SnakemakeDataObject.objects(pipeline=pipeline, commit_id=git_sha).first()
-                if(object is None):
-                    object = SnakemakeDataObject.objects.filter(pipeline=pipeline, status='processing').first()
+                data_object = None
+                data_object = SnakemakeDataObject.objects(pipeline=pipeline, commit_id=git_sha).first()
+                if(data_object is None):
+                    data_object = SnakemakeDataObject.objects.filter(pipeline=pipeline, status='processing').first()
 
-                if(object is None):
+                if(data_object is None):
                     for repo in pipeline.additional_data_repo:
                         repo_git_process = subprocess.Popen(["git", "ls-remote", repo.git_url], stdout=subprocess.PIPE)
                         stdout, std_err = repo_git_process.communicate()
@@ -84,6 +92,14 @@ class RunPipeline(Resource):
                         'filename={0}'.format(pipeline.object_name),
                     ]
                     snakemake_cmd = snakemake_cmd + data_repo
+
+                    # Delete all pipeline data in snakemake object storage if run_all flag is true
+                    s3_response = s3_client.list_objects_v2(Bucket=config('S3_BUCKET'), Prefix='snakemake/{0}/'.format(pipeline_name))
+                    for obj in s3_response.get('Contents'):
+                        key = obj.get('Key')
+                        if run_all or not any(map(key.__contains__, preserved_data)):
+                            print('Deleting: ' + key)
+                            s3_client.delete_object(Bucket=config('S3_BUCKET'), Key=key)
 
                     # Insert the data processing entry to db.
                     entry = SnakemakeDataObject(
@@ -115,11 +131,11 @@ class RunPipeline(Resource):
                     response['commit_id'] = git_sha
                 else:
                     response['status'] = 'not_submitted'
-                    if (object.status.value == 'complete') | (object.status.value == 'uploaded'):
+                    if (data_object.status.value == 'complete') | (data_object.status.value == 'uploaded'):
                         response['message'] = 'A data object processted with the latest %s pipeline already exists.' % pipeline_name
-                    if object.status.value == 'processing':
+                    if data_object.status.value == 'processing':
                         response['message'] = 'Another data object is currently being processed with %s pipeline.' % pipeline_name
-                    response['object'] = object.serialize()
+                    response['object'] = data_object.serialize()
 
             except Exception as e:
                 print('Exception ', e)
@@ -148,12 +164,6 @@ def run_in_thread(cmd, env, pipeline_name, dvc_repo_name, filename, object_id):
         print('execution complete')
 
         # Download the resulting data from the snakemake job.
-        s3_client = boto3.client(
-            's3',
-            endpoint_url=config('S3_URL'),
-            aws_access_key_id=config('S3_ACCESS_KEY_ID'),
-            aws_secret_access_key=config('S3_SECRET_ACCESS_KEY')
-        )
         s3_client.download_file(
             config('S3_BUCKET'), 
             'snakemake/{0}/{1}'.format(pipeline_name, filename), 
@@ -194,13 +204,9 @@ def run_in_thread(cmd, env, pipeline_name, dvc_repo_name, filename, object_id):
         else:
             print('md5 not found')
         
-        # delete snakemake data
-        response = s3_client.list_objects_v2(Bucket=config('S3_BUCKET'), Prefix='snakemake/{0}/'.format(pipeline_name))
-        for object in response['Contents']:
-            s3_client.delete_object(Bucket=config('S3_BUCKET'), Key=object['Key'])
         print('complete')
     except Exception as e:
-        #Log error to db and email notification.
+        # TO DO: Log error to db and email notification.
         print('error')
         obj = SnakemakeDataObject.objects(id = object_id).first()
         obj.update(
