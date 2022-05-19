@@ -1,5 +1,6 @@
 # snakemake-kubernetes-api
-Flask API to be used as the new data processing layer of ORCESTRA.
+Flask API used as the new data processing layer of ORCESTRA.
+Refer to [this wiki page](https://github.com/bhklab/snakemake-kubernetes-api/wiki/Set-up-on-Compute-Canada-VM) for setting up and configuring the application.
 
 ## API End-points
 
