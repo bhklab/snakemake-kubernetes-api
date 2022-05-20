@@ -3,8 +3,11 @@ from flask_restful import Resource
 from flask import request
 from db.models.snakemake_pipeline import SnakemakePipeline
 from decouple import config
+from util.check_token import check_token
 
 class CreatePipeline(Resource):
+    method_decorators = [check_token]
+    
     def get(self):
         return "Only post request is allowed", 400
 

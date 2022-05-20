@@ -4,8 +4,10 @@ from flask import request
 from db.models.snakemake_data_object import SnakemakeDataObject
 from resources.data_object import download
 from decouple import config
+from util.check_token import check_token
 
 class ZenodoUpload(Resource):
+    method_decorators = [check_token]
 
     def get(self):
         return "Only post request is allowed", 400

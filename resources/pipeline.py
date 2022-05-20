@@ -1,6 +1,5 @@
 import traceback
 from flask_restful import Resource
-from flask import request
 from db.models.snakemake_data_object import SnakemakeDataObject
 from db.models.snakemake_pipeline import SnakemakePipeline
 

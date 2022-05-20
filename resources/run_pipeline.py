@@ -6,6 +6,7 @@ from datetime import datetime
 from db.models.snakemake_pipeline import SnakemakePipeline
 from db.models.snakemake_data_object import SnakemakeDataObject
 from decouple import config
+from util.check_token import check_token
 
 # S3 storage client used to interact with a remote object storage.
 s3_client = boto3.client(
@@ -20,6 +21,7 @@ Resource class that triggers a snakemake pipeline run,
 and adds the finalized data object to dvc repo.
 '''
 class RunPipeline(Resource):
+    method_decorators = [check_token]
 
     def get(self):
         return "Only post request is allowed", 400
@@ -28,7 +30,6 @@ class RunPipeline(Resource):
         status = 200
         response = {}
         
-        snakemake_env = os.environ.copy()
         req_body = request.get_json()
         pipeline_name = req_body.get('pipeline')
         run_all = req_body.get('run_all')
@@ -115,7 +116,6 @@ class RunPipeline(Resource):
                         target=run_in_thread, 
                         args=[
                             snakemake_cmd, 
-                            snakemake_env, 
                             pipeline.name,
                             dvc_repo_name, 
                             pipeline.object_name, 
@@ -149,7 +149,7 @@ class RunPipeline(Resource):
 
         return(response, status)
     
-def run_in_thread(cmd, env, pipeline_name, dvc_repo_name, filename, object_id):
+def run_in_thread(cmd, pipeline_name, dvc_repo_name, filename, object_id):
     try:
         # Execute the snakemake job.
         snakemake_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -212,7 +212,7 @@ def run_in_thread(cmd, env, pipeline_name, dvc_repo_name, filename, object_id):
         obj.update(
             process_end_date=datetime.now(),
             status='error',
-            error_message=error_message
+            error_message=str(e)
         )
         raise
 
