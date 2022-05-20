@@ -20,6 +20,7 @@ Example:
 ```
 curl -X POST http://Host_URL/api/pipeline/create \
    -H "Content-Type: application/json" \
+   -H "Authorization: AUTHORIZATIO_TOKEN" \
    -d SEE EXAMPLE JSON FILE (examples/create_pipeline_example.json) 
 ```
 
@@ -30,6 +31,7 @@ Example:
 ```
 curl -X POST http://Host_URL/api/pipeline/run \
    -H "Content-Type: application/json" \
+   -H "Authorization: AUTHORIZATIO_TOKEN" \
    -d SEE EXAMPLE JSON FILE (examples/run_pipeline_example.json) 
 ```
 
@@ -62,6 +64,7 @@ Example:
 ```
 curl -X POST http://Host_URL/api/data_object/upload \
    -H "Content-Type: application/json" \
+   -H "Authorization: AUTHORIZATIO_TOKEN" \
    -d '{"data_obj_id": Data_Object_ID}' 
 ```
 
