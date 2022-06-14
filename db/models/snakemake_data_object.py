@@ -10,7 +10,7 @@ class Status(Enum):
 
 class SnakemakeDataObject(db.Document):
     pipeline = db.ReferenceField(SnakemakePipeline)
-    additional_data_repo = db.ListField(db.EmbeddedDocumentField(DataRepo))
+    additional_repo = db.ListField(db.EmbeddedDocumentField(DataRepo))
     filename = db.StringField()
     commit_id = db.StringField()
     md5 = db.StringField()
@@ -30,11 +30,11 @@ class SnakemakeDataObject(db.Document):
                 'object_name': self.pipeline.object_name,
                 'dvc_git': self.pipeline.dvc_git
             },
-            'additional_data_repo': list(map(lambda repo: {
+            'additional_repo': list(map(lambda repo: {
                 'repo_type': repo.repo_type,
                 'git_url': repo.git_url,
                 'commit_id': repo.commit_id
-            }, self.additional_data_repo)),
+            }, self.additional_repo)),
             'commit_id': self.commit_id,
             'md5': self.md5 if self.md5 is not None else None,
             'status': self.status.value,

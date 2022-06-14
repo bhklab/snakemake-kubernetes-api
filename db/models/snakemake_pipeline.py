@@ -10,7 +10,7 @@ class SnakemakePipeline(db.Document):
     git_url = db.StringField()
     dvc_git = db.StringField()
     object_name = db.StringField()
-    additional_data_repo = db.ListField(db.EmbeddedDocumentField(DataRepo))
+    additional_repo = db.ListField(db.EmbeddedDocumentField(DataRepo))
 
     def serialize(self):
         return({
@@ -19,10 +19,10 @@ class SnakemakePipeline(db.Document):
             'object_name': self.object_name,
             'git_url': self.git_url,
             'dvc_git': self.dvc_git,
-            'additional_data_repo': list(map(lambda repo: {
+            'additional_repo': list(map(lambda repo: {
                 'repo_type': repo.repo_type,
                 'git_url': repo.git_url
-            }, self.additional_data_repo))
+            }, self.additional_repo))
         })
     
     @staticmethod
