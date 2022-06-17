@@ -70,10 +70,6 @@ class RunPipeline(Resource):
                         repo_git_process = subprocess.Popen(["git", "ls-remote", repo.git_url], stdout=subprocess.PIPE)
                         stdout, std_err = repo_git_process.communicate()
                         repo.commit_id = re.split(r'\t+', stdout.decode('ascii'))[0]
-                    other_repo = list(map(
-                        lambda repo: '{0}={1}'.format(repo.repo_type, repo.git_url.replace('.git', '/raw/{0}/'.format(repo.commit_id))), 
-                        pipeline.additional_repo
-                    ))
                     
                     # Define the snakemake execution command.
                     snakemake_cmd = [
@@ -92,7 +88,6 @@ class RunPipeline(Resource):
                         'host={0}'.format(config('S3_URL')),
                         'filename={0}'.format(pipeline.object_name),
                     ]
-                    snakemake_cmd = snakemake_cmd + other_repo
 
                     # Delete all pipeline data in snakemake object storage if run_all flag is true
                     s3_response = s3_client.list_objects_v2(Bucket=config('S3_BUCKET'), Prefix='snakemake/{0}/'.format(pipeline_name))
