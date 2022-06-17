@@ -80,7 +80,7 @@ class RunPipeline(Resource):
                         '--container-image', config('SNAKEMAKE_DOCKER_IMG'),
                         '--default-remote-prefix', config('S3_BUCKET'),
                         '--default-remote-provider', 'S3',
-                        '--jobs', '3',
+                        '--jobs', '1',
                         '--config', 
                         'prefix={0}/snakemake/{1}/'.format(config('S3_BUCKET'), pipeline.name), 
                         'key={0}'.format(config('S3_ACCESS_KEY_ID')), 
@@ -149,14 +149,12 @@ def run_in_thread(cmd, pipeline_name, dvc_repo_name, filename, object_id):
     try:
         # Execute the snakemake job.
         snakemake_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out = []
         while True:
             line = snakemake_process.stderr.readline()
             if not line:
                 break
             else:
                 print(line.rstrip().decode("utf-8"))
-                out.append(line.rstrip().decode("utf-8"))
         print('execution complete')
 
         # Download the resulting data from the snakemake job.
