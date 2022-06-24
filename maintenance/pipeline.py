@@ -1,6 +1,6 @@
 import os, traceback, re, shutil
 import boto3
-from db.models.snakemake_pipeline import SnakemakePipeline
+from db.models.snakemake_pipeline import SnakemakePipeline, DataRepo
 from db.models.snakemake_data_object import SnakemakeDataObject
 from decouple import config
 
@@ -52,4 +52,16 @@ def delete(pipeline):
         print('Pipeline not deleted')
         for warning in warnings:
             print(warning)
+
+# Use this function to perform one-time database modification.
+def modify():
+    try:
+        name_re = re.compile(r'^ICB_*.')
+        # SnakemakePipeline.objects(name=name_re).update(push__additional_repo=DataRepo(
+        #     repo_type='annotation',
+        #     git_url='https://github.com/BHKLAB-Pachyderm/Annotations.git'
+        # ))
+    except Excetion as e:
+        print('Exception ', e)
+        print(traceback.format_exc())
 

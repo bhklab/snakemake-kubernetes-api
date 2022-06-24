@@ -13,7 +13,7 @@ from resources.zenodo import ZenodoUpload
 from resources.logs import ListLogs, DownloadLog
 from resources.k8 import K8ErrorPods, K8ErrorLog
 from resources.test import Test
-from maintenance.pipeline import delete
+from maintenance.pipeline import delete, modify
 
 app = Flask(__name__)
 
@@ -44,3 +44,7 @@ flask cli commands for app/db maintenance
 @click.option('--pipeline')
 def delete_pipeline(pipeline):
     delete(pipeline)
+
+@app.cli.command("modify-pipeline")
+def modify_pipeline():
+    modify()
