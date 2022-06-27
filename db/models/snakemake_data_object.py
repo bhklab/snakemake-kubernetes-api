@@ -40,8 +40,8 @@ class SnakemakeDataObject(db.Document):
             'status': self.status.value,
             'process_start_date': str(self.process_start_date) if self.process_start_date is not None else None,
             'process_end_date': str(self.process_end_date) if self.process_end_date is not None else None,
-            'doi': self.doi if self.doi is not None else None,
-            'download_link': self.download_link if self.download_link is not None else None
+            'doi': self.doi,
+            'download_link': self.download_link
         })
     
     @staticmethod
