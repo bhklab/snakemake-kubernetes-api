@@ -65,8 +65,11 @@ Example:
 curl -X POST http://Host_URL/api/data_object/upload \
    -H "Content-Type: application/json" \
    -H "Authorization: AUTHORIZATION_TOKEN" \
-   -d '{"data_obj_id": Data_Object_ID}' 
+   -d '{"data_obj_id": Data_Object_ID, 'deposition_id': Zenodo_Deposition_ID}' 
 ```
+
+```deposition_id``` is an optional parameter used to upload a data object as a new version of an already-existing object on Zenodo.
+***Desposition id is the last 7 digits of the DOI of an existing data object in Zenodo.***
 
 **GET /api/log/list**
 Returns a list of log files for a pipeline.
