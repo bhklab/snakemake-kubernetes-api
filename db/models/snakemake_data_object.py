@@ -2,11 +2,13 @@ from db import db
 from enum import Enum
 from db.models.snakemake_pipeline import SnakemakePipeline, DataRepo
 
+
 class Status(Enum):
-    PROCESSING='processing'
-    COMPLETE='complete'
-    UPLOADED='uploaded'
-    ERROR='error'
+    PROCESSING = 'processing'
+    COMPLETE = 'complete'
+    UPLOADED = 'uploaded'
+    ERROR = 'error'
+
 
 class SnakemakeDataObject(db.Document):
     pipeline = db.ReferenceField(SnakemakePipeline)
@@ -19,10 +21,11 @@ class SnakemakeDataObject(db.Document):
     process_end_date = db.DateTimeField()
     doi = db.StringField()
     download_link = db.StringField()
+    additional_parameters = db.DictField()
     error_message = db.StringField()
 
     def serialize(self):
-        return({
+        return ({
             '_id': str(self.pk),
             'pipeline': {
                 'name': self.pipeline.name,
@@ -35,6 +38,7 @@ class SnakemakeDataObject(db.Document):
                 'git_url': repo.git_url,
                 'commit_id': repo.commit_id
             }, self.additional_repo)),
+            'additional_parameters': self.additional_parameters if self.additional_parameters else None,
             'commit_id': self.commit_id,
             'md5': self.md5 if self.md5 is not None else None,
             'status': self.status.value,
@@ -43,7 +47,7 @@ class SnakemakeDataObject(db.Document):
             'doi': self.doi,
             'download_link': self.download_link
         })
-    
+
     @staticmethod
     def serialize_list(obj_list):
-        return([item.serialize() for item in obj_list])
+        return ([item.serialize() for item in obj_list])
