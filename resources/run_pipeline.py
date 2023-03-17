@@ -71,8 +71,6 @@ class RunPipeline(Resource):
                 stdout, std_err = git_process.communicate()
                 git_sha = re.split(r'\t+', stdout.decode('ascii'))[0]
 
-                git_sha = 'qwertyuiopasdfghjkl'
-
                 # look for data objects in the db that has been either
                 # 1. already processed / uploaded with the latest version of the pipeline, or
                 # 2. currently being processed with the requested pipeline.
