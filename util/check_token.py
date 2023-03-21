@@ -10,9 +10,11 @@ def check_token(func):
         authorization = request.headers.get('Authorization')
         try:
             decoded = base64.b64decode(authorization)
+            print(decoded.decode('utf-8'))
             if decoded.decode('utf-8') == config('AUTH_TOKEN'):
                 return func(*args, **kwargs)
             abort(401)
         except Exception as e:
+            print(e)
             abort(401)
     return wrapper

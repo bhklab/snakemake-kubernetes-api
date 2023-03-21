@@ -92,7 +92,7 @@ class RunPipeline(Resource):
                     # Define the snakemake execution command.
 
                     snakefile_name = pipeline.snakefile if pipeline.snakefile is not None else 'Snakefile'
-
+                    print(config('SNAKEMAKE_DOCKER_IMG'))
                     snakemake_cmd = [
                         '/home/ubuntu/miniconda3/envs/orcestra-snakemake/bin/snakemake',
                         '--snakefile', work_dir + '/' + snakefile_name,
@@ -113,11 +113,14 @@ class RunPipeline(Resource):
 
                     # Add additional config values if additional parameters are available.
                     if pipeline.additional_parameters:
+                        print(pipeline.additional_parameters)
                         for key in pipeline.additional_parameters.keys():
                             if request_parameters and request_parameters.get(key) is not None:
                                 pipeline.additional_parameters[key] = request_parameters[key]
                             snakemake_cmd.append('{0}={1}'.format(
                                 key, pipeline.additional_parameters[key]))
+
+                    print(snakemake_cmd)
 
                     # Delete all pipeline data in snakemake object storage if run_all flag is true
                     s3_response = s3_client.list_objects_v2(Bucket=config(
