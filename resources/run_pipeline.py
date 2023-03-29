@@ -4,13 +4,17 @@ import threading
 import re
 import traceback
 import boto3
+import util.run_pipeline_functions.git as git
 from flask_restful import Resource
 from flask import request
 from datetime import datetime
-from db.models.snakemake_pipeline import SnakemakePipeline
 from db.models.snakemake_data_object import SnakemakeDataObject
 from decouple import config
 from util.check_token import check_token
+from util.run_pipeline_functions.configure_pipeline import configure_pipeline
+from util.run_pipeline_functions.find_identical_object import find_identical_object
+from util.run_pipeline_functions.get_snakemake_cmd import get_snakemake_cmd
+from util.run_pipeline_functions.delete_s3_data import delete_s3_data
 
 # S3 storage client used to interact with a remote object storage.
 s3_client = boto3.client(
@@ -24,8 +28,6 @@ s3_client = boto3.client(
 Resource class that triggers a snakemake pipeline run, 
 and adds the finalized data object to dvc repo.
 '''
-
-
 class RunPipeline(Resource):
     method_decorators = [check_token]
 
@@ -36,6 +38,7 @@ class RunPipeline(Resource):
         status = 200
         response = {}
 
+        # Extract req params
         req_body = request.get_json()
         pipeline_name = req_body.get('pipeline')
         run_all = req_body.get('run_all')
@@ -44,94 +47,29 @@ class RunPipeline(Resource):
             'large_data'] + preserved_data if preserved_data is not None and isinstance(preserved_data, list) else []
         request_parameters = req_body.get('additional_parameters')
 
-        # find the pipeline
-        pipeline = None
-        pipeline = SnakemakePipeline.objects(name=pipeline_name).first()
+        pipeline = configure_pipeline(pipeline_name, request_parameters)
 
         if pipeline is not None:
             try:
-                snakemake_repo_name = re.findall(
-                    r'.*/(.*?).git$', pipeline.git_url)
-                snakemake_repo_name = snakemake_repo_name[0] if len(
-                    snakemake_repo_name) > 0 else None
-                dvc_repo_name = re.findall(r'.*/(.*?).git$', pipeline.dvc_git)
-                dvc_repo_name = dvc_repo_name[0] if len(
-                    dvc_repo_name) > 0 else None
+                snakemake_repo_name = git.get_repo_name(pipeline.git_url)
+                dvc_repo_name = git.get_repo_name(pipeline.dvc_git)
+                
+                work_dir = os.path.join(config('SNAKEMAKE_ROOT'), snakemake_repo_name)
 
-                # Pull the latest Snakefile and environment configs.
-                work_dir = os.path.join(
-                    config('SNAKEMAKE_ROOT'), snakemake_repo_name)
-                git_process = subprocess.Popen(
-                    ['git', '-C', work_dir, 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                git_process.wait()
+                git.pull_latest_pipeline(work_dir)
 
-                # Get the commit id of the latest Snakefile version.
-                git_process = subprocess.Popen(
-                    ["git", "ls-remote", pipeline.git_url], stdout=subprocess.PIPE)
-                stdout, std_err = git_process.communicate()
-                git_sha = re.split(r'\t+', stdout.decode('ascii'))[0]
-
-                # look for data objects in the db that has been either
-                # 1. already processed / uploaded with the latest version of the pipeline, or
-                # 2. currently being processed with the requested pipeline.
-                data_object = None
-                data_object = SnakemakeDataObject.objects(
-                    pipeline=pipeline, commit_id=git_sha).first()
-                if (data_object is None):
-                    data_object = SnakemakeDataObject.objects.filter(
-                        pipeline=pipeline, status='processing').first()
-
+                git_sha = git.get_latest_commit_id(pipeline.git_url)
+                
+                data_object = find_identical_object(pipeline, git_sha)
+                
                 if (data_object is None):
                     for repo in pipeline.additional_repo:
-                        repo_git_process = subprocess.Popen(
-                            ["git", "ls-remote", repo.git_url], stdout=subprocess.PIPE)
-                        stdout, std_err = repo_git_process.communicate()
-                        repo.commit_id = re.split(
-                            r'\t+', stdout.decode('ascii'))[0]
+                        repo.commit_id = git.get_latest_commit_id(repo.git_url)
 
-                    # Define the snakemake execution command.
-
-                    snakefile_name = pipeline.snakefile if pipeline.snakefile is not None else 'Snakefile'
-                    print(config('SNAKEMAKE_DOCKER_IMG'))
-                    snakemake_cmd = [
-                        '/home/ubuntu/miniconda3/envs/orcestra-snakemake/bin/snakemake',
-                        '--snakefile', work_dir + '/' + snakefile_name,
-                        '--directory', work_dir,
-                        '--kubernetes',
-                        '--container-image', config('SNAKEMAKE_DOCKER_IMG'),
-                        '--default-remote-prefix', config('S3_BUCKET'),
-                        '--default-remote-provider', 'S3',
-                        '--jobs', '1',
-                        '--config',
-                        'prefix={0}/snakemake/{1}/'.format(
-                            config('S3_BUCKET'), pipeline.name),
-                        'key={0}'.format(config('S3_ACCESS_KEY_ID')),
-                        'secret={0}'.format(config('S3_SECRET_ACCESS_KEY')),
-                        'host={0}'.format(config('S3_URL')),
-                        'filename={0}'.format(pipeline.object_name),
-                    ]
-
-                    # Add additional config values if additional parameters are available.
-                    if pipeline.additional_parameters:
-                        print(pipeline.additional_parameters)
-                        for key in pipeline.additional_parameters.keys():
-                            if request_parameters and request_parameters.get(key) is not None:
-                                pipeline.additional_parameters[key] = request_parameters[key]
-                            snakemake_cmd.append('{0}={1}'.format(
-                                key, pipeline.additional_parameters[key]))
-
+                    snakemake_cmd = get_snakemake_cmd(pipeline, work_dir)
                     print(snakemake_cmd)
 
-                    # Delete all pipeline data in snakemake object storage if run_all flag is true
-                    s3_response = s3_client.list_objects_v2(Bucket=config(
-                        'S3_BUCKET'), Prefix='snakemake/{0}/'.format(pipeline_name))
-                    if s3_response.get('Contents') is not None:
-                        for obj in s3_response.get('Contents'):
-                            key = obj.get('Key')
-                            if run_all or not any(map(key.__contains__, preserved_data)):
-                                print('Deleting: ' + key)
-                                s3_client.delete_object(
-                                    Bucket=config('S3_BUCKET'), Key=key)
+                    delete_s3_data(s3_client, pipeline.name, run_all, preserved_data)
 
                     # Insert the data processing entry to db.
                     entry = SnakemakeDataObject(

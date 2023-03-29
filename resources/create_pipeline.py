@@ -37,9 +37,9 @@ class CreatePipeline(Resource):
             if found is not None:
                 warnings.append(
                     'Pipeline {0} already exists.'.format(pipeline['name']))
-            if os.path.isdir(os.path.join(config('SNAKEMAKE_ROOT'), snakemake_repo_name)):
-                warnings.append(
-                    'Snakemake repository {0} already exists.'.format(snakemake_repo_name))
+            # if os.path.isdir(os.path.join(config('SNAKEMAKE_ROOT'), snakemake_repo_name)):
+            #     warnings.append(
+            #         'Snakemake repository {0} already exists.'.format(snakemake_repo_name))
             if os.path.isdir(os.path.join(config('DVC_ROOT'), dvc_repo_name)):
                 warnings.append(
                     'DVC repository {0} already exists.'.format(dvc_repo_name))
