@@ -105,10 +105,14 @@ def fetch_and_upload(object, deposition_id=None):
                     doi=result['doi'],
                     download_link=result['download_link']
                 )
-        shutil.rmtree(tmp_dir)
+            shutil.rmtree(tmp_dir)
         else:
             print('zenodo upload failed')
             print(result)
+            object.update(
+                status='error',
+                error_messages=[result]
+            )
     except Exception as e:
         print('Exception ', e)
         print(traceback.format_exc())

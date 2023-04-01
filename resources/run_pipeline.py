@@ -178,7 +178,7 @@ def run_in_thread(cmd, pipeline_name, dvc_repo_name, object_id):
                 obj.update(
                     process_end_date=datetime.now(),
                     status='error',
-                    error_message='md5 not found'
+                    error_message=list({'message': 'md5 not found'})
                 )
         
         print('complete')
@@ -189,6 +189,6 @@ def run_in_thread(cmd, pipeline_name, dvc_repo_name, object_id):
         obj.update(
             process_end_date=datetime.now(),
             status='error',
-            error_message=str(e)
+            error_message=list({'message': str(e)})
         )
         raise

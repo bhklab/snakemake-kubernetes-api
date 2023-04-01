@@ -29,7 +29,7 @@ class SnakemakeDataObject(db.Document):
     doi = db.StringField()
     download_link = db.StringField()
     additional_parameters = db.DictField()
-    error_message = db.StringField()
+    error_messages = db.ListField(db.DictField(), default=None)
 
     def serialize(self):
         return ({
@@ -58,7 +58,8 @@ class SnakemakeDataObject(db.Document):
             'process_start_date': str(self.process_start_date) if self.process_start_date is not None else None,
             'process_end_date': str(self.process_end_date) if self.process_end_date is not None else None,
             'doi': self.doi,
-            'download_link': self.download_link
+            'download_link': self.download_link,
+            'error': self.error_messages if self.error_messages is not None else None
         })
 
     @staticmethod
