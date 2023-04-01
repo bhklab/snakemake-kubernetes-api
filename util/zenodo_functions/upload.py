@@ -1,5 +1,6 @@
 import traceback, json, requests
 from decouple import config
+from util.zenodo_functions.upload_file import upload_file
 
 """
 Function to upload data object to new repository on Zenodo
@@ -55,19 +56,42 @@ def upload(object, source_dir):
 
         if data['add_metadata']:
             # Upload
-            res = None
-            with open('{0}/{1}'.format(source_dir, object.pipeline.object_name), 'rb') as fp:
-                res = requests.put(
-                    bucket_url + '/' + object.pipeline.object_name,
-                    data=fp,
-                    params={'access_token': ACCESS_TOKEN}
-                )
-            print('upload data: %s' % res.status_code)
-            if res.status_code == 200:
-                data['download_link'] = BASE_URL + "/record/" + str(deposition_id) + "/files/" + object.pipeline.object_name + "?download=1"
-                data['upload'] = True
+            if object.object_files is not None:
+                results = list()
+                for object_file in object.object_files:
+                    result = upload_file(
+                        source_dir,
+                        object_file['filename'],
+                        BASE_URL,
+                        bucket_url,
+                        ACCESS_TOKEN,
+                        deposition_id
+                    )
+                    uploaded = {
+                        'filename': object_file['filename']
+                    }
+                    if result.get('error') is None:
+                        data['upload'] = True
+                        uploaded['download_link'] = result.get('download_link')
+                    else:
+                        data['upload'] = False
+                        uploaded['error'] = result.get('error')
+                    results.append(uploaded)
+                data["uploaded_files"] = results
             else:
-                data['error'] = res.json()
+                result = upload_file(
+                    source_dir,
+                    object.pipeline.object_name,
+                    BASE_URL,
+                    bucket_url,
+                    ACCESS_TOKEN,
+                    deposition_id
+                )
+                if result.get('error') is None:
+                    data['upload'] = True
+                    data['download_link'] = result.get('download_link')
+                else:
+                    data['error'] = result.get('error')
 
         if data['upload']:
             # Publish

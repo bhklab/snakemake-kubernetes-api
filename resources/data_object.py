@@ -68,7 +68,12 @@ class DownloadDataObject(Resource):
                     if not os.path.exists(tmp_dir):
                         os.makedirs(tmp_dir)
                     if not os.path.exists(file_path):
-                        download(object, tmp_dir)
+                        download(
+                            object.pipeline.name, 
+                            object.pipeline.object_name,
+                            object.md5,
+                            tmp_dir
+                        )
             else:
                 response['message'] = 'Data object could not be found'
         except Exception as e:
@@ -87,7 +92,7 @@ class DownloadDataObject(Resource):
         return 'Only get request is allowed', 400   
 
 
-def download(object, dest_dir):
+def download(pipeline_name, object_name, md5, dest_dir):
     try:
         # Download the resulting data from the snakemake job.
         s3_client = boto3.client(
@@ -98,8 +103,8 @@ def download(object, dest_dir):
         )
         s3_client.download_file(
             config('S3_BUCKET'), 
-            'dvc/{0}/{1}/{2}'.format(object.pipeline.name, object.md5[:2], object.md5[2:]), 
-            os.path.join(dest_dir, object.pipeline.object_name)
+            'dvc/{0}/{1}/{2}'.format(pipeline_name, md5[:2], md5[2:]), 
+            os.path.join(dest_dir, object_name)
         )
     except Exception as e:
         print('Exception ', e)

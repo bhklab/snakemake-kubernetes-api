@@ -1,5 +1,6 @@
 import traceback, json, requests
 from decouple import config
+from util.zenodo_functions.upload_file import upload_file
 
 """
 Function to create a new version of the existing repository and uploads an updated data object.
@@ -40,34 +41,58 @@ def upload_new_version(deposition_id, object, source_dir):
             )
             new_deposition = res.json()
             data['doi'] = new_deposition.get('doi')
-            file_found = next((item for item in new_deposition.get('files') if item["filename"] == object.pipeline.object_name), None)
-            print('file to delete: ' + file_found['filename'])
-            res = requests.delete(
-                draft_url + '/files/' + file_found['id'],
-                params={'access_token': ACCESS_TOKEN},
-                headers={"Content-Type": "application/json"}
-            )
-            if res.status_code == 204:
-                data['remove_old_file'] = True
-            else:
-                data['error'] = res.json()
+            # file_found = next((item for item in new_deposition.get('files') if item["filename"] == object.pipeline.object_name), None)
+            for file_found in new_deposition.get('files'):
+                print('file to delete: ' + file_found['filename'])
+                res = requests.delete(
+                    draft_url + '/files/' + file_found['id'],
+                    params={'access_token': ACCESS_TOKEN},
+                    headers={"Content-Type": "application/json"}
+                )
+                if res.status_code == 204:
+                    data['remove_old_file'] = True
+                else:
+                    data['error'] = res.json()
 
         # upload data
         if data['remove_old_file']:
             # Upload
-            res = None
-            with open('{0}/{1}'.format(source_dir, object.pipeline.object_name), 'rb') as fp:
-                res = requests.put(
-                    new_deposition.get('links').get('bucket') + '/' + object.pipeline.object_name,
-                    data=fp,
-                    params={'access_token': ACCESS_TOKEN}
-                )
-            print('upload data: %s' % res.status_code)
-            if res.status_code == 200:
-                data['download_link'] = BASE_URL + "/record/" + str(new_deposition.get('id')) + "/files/" + object.pipeline.object_name + "?download=1"
-                data['upload_new_file'] = True
+            if object.object_files is not None:
+                results = list()
+                for object_file in object.object_files:
+                    result = upload_file(
+                        source_dir,
+                        object_file['filename'],
+                        BASE_URL,
+                        new_deposition.get('links').get('bucket'),
+                        ACCESS_TOKEN,
+                        deposition_id
+                    )
+                    uploaded = {
+                        'filename': object_file['filename']
+                    }
+                    if result.get('error') is None:
+                        data['upload_new_file'] = True
+                        uploaded['download_link'] = result.get('download_link')
+                    else:
+                        data['upload_new_file'] = False
+                        uploaded['error'] = result.get('error')
+                    results.append(uploaded)
+                data["uploaded_files"] = results
             else:
-                data['error'] = res.json()
+                result = upload_file(
+                    source_dir,
+                    object.pipeline.object_name,
+                    BASE_URL,
+                    new_deposition.get('links').get('bucket'),
+                    ACCESS_TOKEN,
+                    deposition_id
+                )
+                if result.get('error') is None:
+                    data['upload_new_file'] = True
+                    data['download_link'] = result.get('download_link')
+                else:
+                    data['error'] = result.get('error')
 
         # publish new version
         if data['upload_new_file']:

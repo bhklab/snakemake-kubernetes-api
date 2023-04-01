@@ -67,7 +67,11 @@ def fetch_and_upload(object, deposition_id=None):
             os.makedirs(tmp_dir)
 
         # download data object from the object storage
-        download(object, tmp_dir)
+        if object.object_files is not None:
+            for object_file in object.object_files:
+                download(object.pipeline.name, object_file.filename, object_file.md5, tmp_dir)
+        else:
+            download(object.pipeline.name, object.pipeline.object_name, object.md5, tmp_dir)
         print('download complete')
 
         # upload to Zenodo
@@ -81,12 +85,30 @@ def fetch_and_upload(object, deposition_id=None):
 
         # update the database
         if result is not None and result['publish']:
-            object.update(
-                status='uploaded',
-                doi=result['doi'],
-                download_link=result['download_link']
-            )
+            if object.object_files is not None:
+                updated_files = list()
+                for object_file in object.object_files:
+                    found = next((uploaded_file for uploaded_file in result['uploaded_files'] if uploaded_file['filename'] == object_file['filename']), None)
+                    updated_files.append({
+                        'filename': object_file['filename'],
+                        'md5': object_file['md5'],
+                        'download_link': found['download_link']
+                    })
+                object.update(
+                    status='uploaded',
+                    doi=result['doi'],
+                    object_files=updated_files
+                )
+            else:
+                object.update(
+                    status='uploaded',
+                    doi=result['doi'],
+                    download_link=result['download_link']
+                )
         shutil.rmtree(tmp_dir)
+        else:
+            print('zenodo upload failed')
+            print(result)
     except Exception as e:
         print('Exception ', e)
         print(traceback.format_exc())

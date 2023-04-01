@@ -8,6 +8,7 @@ import util.run_pipeline_functions.git as git
 from flask_restful import Resource
 from flask import request
 from datetime import datetime
+from db.models.snakemake_pipeline import SnakemakePipeline
 from db.models.snakemake_data_object import SnakemakeDataObject
 from decouple import config
 from util.check_token import check_token
@@ -15,6 +16,7 @@ from util.run_pipeline_functions.configure_pipeline import configure_pipeline
 from util.run_pipeline_functions.find_identical_object import find_identical_object
 from util.run_pipeline_functions.get_snakemake_cmd import get_snakemake_cmd
 from util.run_pipeline_functions.delete_s3_data import delete_s3_data
+from util.run_pipeline_functions.add_to_dvc import add_to_dvc
 
 # S3 storage client used to interact with a remote object storage.
 s3_client = boto3.client(
@@ -63,6 +65,7 @@ class RunPipeline(Resource):
                 data_object = find_identical_object(pipeline, git_sha)
                 
                 if (data_object is None):
+                # if (True):
                     for repo in pipeline.additional_repo:
                         repo.commit_id = git.get_latest_commit_id(repo.git_url)
 
@@ -81,6 +84,12 @@ class RunPipeline(Resource):
                         process_start_date=datetime.now()
                     ).save()
 
+                    # development code
+                    # snakemake_cmd = ''
+                    # pipeline_name = 'PSet_GBM'
+                    # dvc_repo_name = 'PSet_GBM-dvc'
+                    # entry_id = '6427508641c6cf932679f86c'
+
                     # Start the snakemake job.
                     thread = threading.Thread(
                         target=run_in_thread,
@@ -88,7 +97,7 @@ class RunPipeline(Resource):
                             snakemake_cmd,
                             pipeline.name,
                             dvc_repo_name,
-                            pipeline.object_name,
+                            # entry_id
                             str(entry.id)
                         ]
                     )
@@ -120,7 +129,7 @@ class RunPipeline(Resource):
         return (response, status)
 
 
-def run_in_thread(cmd, pipeline_name, dvc_repo_name, filename, object_id):
+def run_in_thread(cmd, pipeline_name, dvc_repo_name, object_id):
     try:
         # Execute the snakemake job.
         snakemake_process = subprocess.Popen(
@@ -133,48 +142,45 @@ def run_in_thread(cmd, pipeline_name, dvc_repo_name, filename, object_id):
                 print(line.rstrip().decode("utf-8"))
         print('execution complete')
 
-        # Download the resulting data from the snakemake job.
-        s3_client.download_file(
-            config('S3_BUCKET'),
-            'snakemake/{0}/{1}'.format(pipeline_name, filename),
-            os.path.join(config('DVC_ROOT'), dvc_repo_name, filename)
-        )
-        print('download complete')
+        pipeline = SnakemakePipeline.objects(name=pipeline_name).first()
+        obj = SnakemakeDataObject.objects(id=object_id).first()
+        print(pipeline.object_name)
 
-        # Add data to DVC remote.
-        cwd = os.path.abspath(os.getcwd())
-        add_data_cmd = [
-            'bash',
-            os.path.join(cwd, 'bash', 'dvc_add.sh'),
-            '-r', os.path.join(config('DVC_ROOT'), dvc_repo_name),
-            '-d', pipeline_name,
-            '-f', filename
-        ]
-        dvc_process = subprocess.Popen(
-            add_data_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        while True:
-            line = dvc_process.stdout.readline()
-            if not line:
-                break
-            else:
-                print(line.rstrip().decode("utf-8"))
-        with open(os.path.join(config('DVC_ROOT'), dvc_repo_name, filename + ".dvc")) as file:
-            lines = [line.rstrip() for line in file]
-        r = re.compile("^- md5:.*")
-        found = next(filter(r.match, lines), None)
-        if found:
-            md5 = re.findall(r'- md5:\s(.*?)$', found)
-            print('data added: ' + md5[0])
-            # Update db with the md5 value.
-            obj = SnakemakeDataObject.objects(id=object_id).first()
+        if pipeline.object_names is not None:
+            print('multiple files')
+            
+            object_files = list()
+            # Add each file to DVC with the same file name due to DVC accepting only one file to be tracked.
+            # Record the md5 for each file
+            for filename in pipeline.object_names:
+                print(filename)
+                md5 = add_to_dvc(s3_client, pipeline.name, pipeline.object_name, dvc_repo_name, filename)
+                object_files.append({
+                    'filename': filename,
+                    'md5': md5
+                })
+            
             obj.update(
-                md5=md5[0],
+                object_files=object_files,
                 process_end_date=datetime.now(),
                 status='complete'
             )
         else:
-            print('md5 not found')
-
+            # Add data file to DVC.
+            md5 = add_to_dvc(s3_client, pipeline.name, pipeline.object_name, dvc_repo_name)
+            if md5:
+                obj.update(
+                    md5=md5,
+                    process_end_date=datetime.now(),
+                    status='complete'
+                )
+            else:
+                obj.update(
+                    process_end_date=datetime.now(),
+                    status='error',
+                    error_message='md5 not found'
+                )
+        
         print('complete')
     except Exception as e:
         # TO DO: Log error to db and email notification.

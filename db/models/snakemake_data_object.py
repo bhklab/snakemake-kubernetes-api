@@ -9,11 +9,18 @@ class Status(Enum):
     UPLOADED = 'uploaded'
     ERROR = 'error'
 
+# Used to store object file info if there is more than one file.
+class ObjFile(db.EmbeddedDocument):
+    filename = db.StringField()
+    md5 = db.StringField()
+    download_link = db.StringField()
+
 
 class SnakemakeDataObject(db.Document):
     pipeline = db.ReferenceField(SnakemakePipeline)
     additional_repo = db.ListField(db.EmbeddedDocumentField(DataRepo))
     filename = db.StringField()
+    object_files = db.ListField(db.EmbeddedDocumentField(ObjFile), default=None)
     commit_id = db.StringField()
     md5 = db.StringField()
     status = db.EnumField(Status, default=Status.PROCESSING)
@@ -30,7 +37,8 @@ class SnakemakeDataObject(db.Document):
             'pipeline': {
                 'name': self.pipeline.name,
                 'git_url': self.pipeline.git_url,
-                'object_name': self.pipeline.object_name,
+                'object_name': self.pipeline.object_name if self.pipeline.object_name is not None else None,
+                'object_names': self.pipeline.object_names if self.pipeline.object_names is not None else None,
                 'dvc_git': self.pipeline.dvc_git
             },
             'additional_repo': list(map(lambda repo: {
@@ -38,6 +46,11 @@ class SnakemakeDataObject(db.Document):
                 'git_url': repo.git_url,
                 'commit_id': repo.commit_id
             }, self.additional_repo)),
+            'object_files': list(map(lambda file: {
+                'filename': file.filename,
+                'md5': file.md5,
+                'download_link': file.download_link
+            }, self.object_files)) if self.object_files is not None else None,
             'additional_parameters': self.additional_parameters if self.additional_parameters else None,
             'commit_id': self.commit_id,
             'md5': self.md5 if self.md5 is not None else None,
