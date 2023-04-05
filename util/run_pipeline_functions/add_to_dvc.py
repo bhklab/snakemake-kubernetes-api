@@ -43,4 +43,5 @@ def add_to_dvc(s3_client, pipeline_name, filename, dvc_repo_name, alt_filename=N
         print('data added: ' + md5[0])
     else:
         print('md5 not found')
+    os.remove(os.path.join(config('DVC_ROOT'), dvc_repo_name, filename))
     return(md5[0])
