@@ -23,12 +23,20 @@ class ZenodoUpload(Resource):
             deposition_id = req_body.get('deposition_id')
             object = None
 
+            uploading = SnakemakeDataObject.objects(status='uploading')
+            if(len(uploading) > 0):
+                response['message'] = 'Another object is beling uploaded. Please wait until the current upload is complete.'
+                return response, status
+
             if(data_obj_id is not None):
                 object = SnakemakeDataObject.objects(pk=data_obj_id).first()
 
             if(object is not None):
                 if object.status.value == 'complete':
                     print('upload')
+                    object.update(
+                        status='uploading'
+                    )
                     # execute the upload process in a separate thread
                     thread = threading.Thread(
                         target=fetch_and_upload, 
