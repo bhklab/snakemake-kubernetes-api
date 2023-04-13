@@ -1,4 +1,5 @@
-import os, click
+import os
+import click
 from flask import Flask
 from flask_restful import Api
 from flask_cors import CORS
@@ -40,10 +41,13 @@ api.add_resource(Test, '/api/test')
 '''
 flask cli commands for app/db maintenance
 '''
+
+
 @app.cli.command("delete-pipeline")
 @click.option('--pipeline')
 def delete_pipeline(pipeline):
     delete(pipeline)
+
 
 @app.cli.command("modify-pipeline")
 def modify_pipeline():

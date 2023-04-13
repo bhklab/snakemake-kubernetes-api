@@ -1,4 +1,9 @@
-import os, threading, traceback, json, requests, shutil
+import os
+import threading
+import traceback
+import json
+import requests
+import shutil
 from flask_restful import Resource
 from flask import request
 from db.models.snakemake_data_object import SnakemakeDataObject
@@ -8,12 +13,13 @@ from util.check_token import check_token
 from util.zenodo_functions.upload import upload
 from util.zenodo_functions.upload_new_version import upload_new_version
 
+
 class ZenodoUpload(Resource):
     method_decorators = [check_token]
 
     def get(self):
         return "Only post request is allowed", 400
-    
+
     def post(self):
         status = 200
         response = {}
@@ -24,14 +30,14 @@ class ZenodoUpload(Resource):
             object = None
 
             uploading = SnakemakeDataObject.objects(status='uploading')
-            if(len(uploading) > 0):
+            if (len(uploading) > 0):
                 response['message'] = 'Another object is beling uploaded. Please wait until the current upload is complete.'
                 return response, status
 
-            if(data_obj_id is not None):
+            if (data_obj_id is not None):
                 object = SnakemakeDataObject.objects(pk=data_obj_id).first()
 
-            if(object is not None):
+            if (object is not None):
                 if object.status.value == 'complete':
                     print('upload')
                     object.update(
@@ -39,35 +45,43 @@ class ZenodoUpload(Resource):
                     )
                     # execute the upload process in a separate thread
                     thread = threading.Thread(
-                        target=fetch_and_upload, 
+                        target=fetch_and_upload,
                         args=[object, deposition_id]
                     )
                     thread.start()
                     response['message'] = 'Object is being uploaded.'
+                    response['status'] = 'ok'
                 elif object.status.value == 'processing':
                     response['message'] = 'Unable to upload. Data object is being processed.'
+                    response['status'] = 'error'
                 elif object.status.value == 'uploaded':
                     response = {
+                        'status': 'error',
                         'message': 'Data object has already been uploaded.',
                         'doi': object.doi,
                         'download_link': object.download_link
                     }
             else:
+                response['status'] = 'error'
                 response['message'] = 'Data object could not be found'
         except Exception as e:
             print('Exception ', e)
             print(traceback.format_exc())
+            response['status'] = 'error'
             response['error'] = 1
             response['message'] = str(e)
             status = 500
         finally:
             return response, status
 
+
 '''
 Downloads the data objects to temp dir, save it with the object filename.
 Uploads the data object to Zenodo.
 Updates the database document status as 'uploaded'.
 '''
+
+
 def fetch_and_upload(object, deposition_id=None):
     try:
         tmp_dir = os.path.join(config('TMP_DIR'), str(object.id))
@@ -77,9 +91,11 @@ def fetch_and_upload(object, deposition_id=None):
         # download data object from the object storage
         if object.object_files is not None:
             for object_file in object.object_files:
-                download(object.pipeline.name, object_file.filename, object_file.md5, tmp_dir)
+                download(object.pipeline.name, object_file.filename,
+                         object_file.md5, tmp_dir)
         else:
-            download(object.pipeline.name, object.pipeline.object_name, object.md5, tmp_dir)
+            download(object.pipeline.name,
+                     object.pipeline.object_name, object.md5, tmp_dir)
         print('download complete')
 
         # upload to Zenodo
@@ -96,7 +112,8 @@ def fetch_and_upload(object, deposition_id=None):
             if object.object_files is not None:
                 updated_files = list()
                 for object_file in object.object_files:
-                    found = next((uploaded_file for uploaded_file in result['uploaded_files'] if uploaded_file['filename'] == object_file['filename']), None)
+                    found = next(
+                        (uploaded_file for uploaded_file in result['uploaded_files'] if uploaded_file['filename'] == object_file['filename']), None)
                     updated_files.append({
                         'filename': object_file['filename'],
                         'md5': object_file['md5'],

@@ -74,16 +74,19 @@ class CreatePipeline(Resource):
                 entry = SnakemakePipeline(**pipeline).save()
 
                 response['message'] = 'Pipeline created'
+                response['status'] = 'ok'
 
             except Exception as e:
                 print('Exception ', e)
                 print(traceback.format_exc())
                 response['error'] = 1
                 response['message'] = str(e)
+                response['status'] = 'error'
                 status = 500
         else:
             response['message'] = 'Pipeline not created'
             response['warnings'] = warnings
+            response['status'] = 'error'
 
         return (response, status)
 
